@@ -5,6 +5,11 @@ cache:
   directories:
   - "$HOME/.lein"
   - "$HOME/.m2"
+services:
+  - redis-server
+env:
+  global:
+    - REDIS_URL="redis://localhost:6379" REDIS_TIMEOUT="4000"
 script:
 - lein cljfmt check
 - lein test

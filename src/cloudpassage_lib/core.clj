@@ -2,18 +2,30 @@
   (:require
    [clojure.string :as str]
    [aleph.http :as http]
+   [environ.core :refer [env]]
    [manifold.deferred :as md]
    [manifold.time :as mt]
    [byte-streams :as bs]
+   [taoensso.carmine :as car :refer (wcar)]
    [taoensso.timbre :as timbre :refer [info error]]
    [base64-clj.core :as base64]
    [clj-time.core :as time]
    [clj-time.format :as f]
+   [cloudpassage-lib.fernet :as fernet]
    [cheshire.core :as json]))
 
 ;; the url from which new auth-tokens can be obtained.
 (def auth-uri "https://api.cloudpassage.com/oauth/access_token?grant_type=client_credentials")
 (def events-uri "https://api.cloudpassage.com/v1/events?")
+
+(defn redis-connection
+  []
+  (let [{:keys [redis-url redis-timeout]} env]
+    {:pool {}
+     :spec {:uri redis-url
+            :timeout (read-string redis-timeout)}}))
+
+(defmacro wcar* [& body] `(car/wcar (redis-connection) ~@body))
 
 (defn ^:private ->basic-auth-header
   [client-id client-key]
@@ -71,3 +83,25 @@
       (fn [exc]
         (error "error fetching events page:" (.getMessage exc))
         ::fetch-error)))))
+
+(defn fetch-token!
+  "Fetch an access token for the cloudpassage api that belongs to the client-id/secret pair.
+   If a token doesn't exist in Redis, then this will hit the cloudpassage api to obtain one.
+   If the token exists in the cache, it will be returned.
+
+  Returns a string representing an access-token."
+  [client-id client-secret fernet-key]
+  (let [account-key (str "account-" client-id)
+        token (wcar* (car/get account-key))]
+    (if (some? token)
+      ;; a token is in redis
+      (fernet/decrypt fernet-key token)
+      ;; no token is present, fetch a new one
+      (let [new-token (get-auth-token! client-id client-secret)
+            ;; this will cause the token to expire 100 seconds earlier than expiration
+            ;; it is a simple fudge factor.
+            {:keys [access_token expires_in]} new-token
+            ttl (- expires_in 100)
+            encrypted-token (fernet/encrypt fernet-key access_token)]
+        (wcar* (car/setex account-key ttl encrypted-token))
+        access_token))))
