@@ -1,9 +1,9 @@
-# The CloudPassage API #
+# The CloudPassage API
 
 Most information has been referenced from:
 https://support.cloudpassage.com/entries/23110911-Overview
 
-## API Client ##
+## API Client
 
 1. First, we need to get a client ID and secret key. These *must* be obtained
    through the CloudPassage UI. These must be provided with all API requests.
