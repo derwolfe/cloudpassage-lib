@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/RackSec/cloudpassage-lib.svg?branch=master)](https://travis-ci.org/RackSec/cloudpassage-lib)
 [![codecov.io](https://codecov.io/github/RackSec/cloudpassage-lib/coverage.svg?branch=master)](https://codecov.io/github/RackSec/cloudpassage-lib?branch=master)
+[![Clojars Project](https://img.shields.io/clojars/v/cloudpassage-lib.svg)](https://clojars.org/cloudpassage-lib)
 
 # cloudpassage-lib
 
@@ -8,7 +9,7 @@ A Clojure library for interacting with CloudPassage APIs.
 For more information on the specifics of CloudPassage APIs, see the
 [`cloudpassage-api.md`](doc/cloudpassage-api.md) file under `doc/`.
 
-## Setup
+## Usage
 
 1. Install or have a running, reachable instance of redis available.
 
@@ -47,6 +48,8 @@ For more information on the specifics of CloudPassage APIs, see the
     :redis-timeout 4000
     :fernet-key "AVALIDFERNETKEY"}
    ```
+
+Now you are able to make API calls such as `cloudpassage-lib.scans/fim-report!`.
 
 ## API Key management
 
