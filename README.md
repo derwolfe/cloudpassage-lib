@@ -32,22 +32,21 @@ For more information on the specifics of CloudPassage APIs, see the
    "9HS-DrHsi48OBk51jDcAwiHT6Xy5GPqjtnB4guVWpp0"
    ```
 
-4. Set the following environment variables. One could use a profile or
-   `.lein-env` file instead.
-
-   ```bash
-   # Set some shell environment variables
-   REDIS_URL=redis://localhost:6379
-   REDIS_TIMEOUT=4000
-   FERNET_KEY=AVALIDFERNETKEY
-   ```
-
-   ```clojure
-   ; Paste this into a .lein-env file in the project root
-   {:redis-url "redis://localhost:6379"
-    :redis-timeout 4000
-    :fernet-key "AVALIDFERNETKEY"}
-   ```
+4. Set the following environment variables or use a `profiles.clj` file at the project's root.
+  ```bash
+  REDIS_URL=redis://localhost:6379
+  REDIS_TIMEOUT=4000
+  FERNET_KEY=AVALIDFERNETKEY
+  ```
+  A `profiles.clj` file would contain a `:dev` profile to run the application, and a `:test` profile for testing.
+  *Important* If a `profiles.clj` file is used, please do not commit this to version control (it is currently ignored intentionally).
+  ```clojure
+  {:dev {:env {:redis-url "redis://localhost:6379"
+               :redis-timeout "4000"
+               :fernet-key "AVALIDFERNETKEY"}}}
+  {:test {:env {:redis-url "redis://localhost:6379"
+                :redis-timeout "4000"}}}
+  ```
 
 Now you are able to make API calls such as `cloudpassage-lib.scans/fim-report!`.
 
