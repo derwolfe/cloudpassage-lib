@@ -21,9 +21,8 @@
             [lein-environ "1.0.2"]
             [lein-cloverage "1.0.7-SNAPSHOT"]]
   :min-lein-version "2.0.0"
-  :profiles {:dev
-             {:env {:redis-url "redis://localhost:6379"
-                    :redis-timeout "4000"}
-              :dependencies [[pjstadig/humane-test-output "0.7.1"]]
-                   :injections [(require 'pjstadig.humane-test-output)
-                                (pjstadig.humane-test-output/activate!)]}})
+  :profiles {:test {:env {:redis-url "redis://localhost:6379"
+                          :redis-timeout "4000"}}
+             :dependencies [[pjstadig/humane-test-output "0.7.1"]]
+             :injections [(require 'pjstadig.humane-test-output)
+                          (pjstadig.humane-test-output/activate!)]})
