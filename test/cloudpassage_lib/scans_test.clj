@@ -50,10 +50,19 @@
     1 "svm"    ;; software version management
     2 "ccm"))  ;; configuration change management
 
-(def fake-pages 10)
-(def scans-per-page 10)
+(def ^:private fake-pages 10)
+(def ^:private scans-per-page 10)
+(def ^:private details-query-url
+  (str scans/base-scans-url "?details=true"))
 
 (defn ^:private fake-get-page!
+  "Returns two kinds of fake pages. If a 'details' query is specified, returns
+   a page with the map with keys [scan-id module url scan] and some default
+   values.
+
+   Otherwise, returns a paginated query result with various module types.
+
+   The only valid credentials are the account:secret pair 'lvh:hunter2'."
   [client-id client-secret url]
   (is (= client-id "lvh"))
   (is (= client-secret "hunter2"))
@@ -69,12 +78,18 @@
       (let [since (tf/parse cp-date-formatter since)
             fudged (t/interval (-> 4 hours ago) (-> 3 hours ago))]
         (is (within? fudged since))))
-    {:scans (for [index-in-page (range scans-per-page)
-                  :let [scan-index (+ (* scans-per-page page-num)
-                                      index-in-page)]]
-              {:scan-id scan-index
-               :module (index->module scan-index)})
-     :pagination {:next next-page}}))
+    (if (query "details")
+      {:scan-id "0"
+       :module "fim"
+       :url details-query-url
+       :scan {}}
+      {:scans (for [index-in-page (range scans-per-page)
+                    :let [scan-index (+ (* scans-per-page page-num)
+                                        index-in-page)]]
+                {:scan-id scan-index
+                 :module (index->module scan-index)
+                 :url details-query-url})
+       :pagination {:next next-page}})))
 
 (deftest scans!-tests
   (with-redefs [scans/get-page! fake-get-page!]
@@ -82,9 +97,26 @@
           scans (ms/stream->seq scans-stream)]
       (is (= (for [scan-id (range (* fake-pages scans-per-page))]
                {:scan-id scan-id
-                :module (index->module scan-id)})
+                :module (index->module scan-id)
+                :url details-query-url})
              scans))
       (is (ms/closed? scans-stream)))))
+
+(deftest scans-with-details!-tests
+  (with-redefs [scans/get-page! fake-get-page!]
+    (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
+          scans-with-details (scans/scans-with-details! "lvh"
+                                                        "hunter2"
+                                                        scans-stream)
+          scans (ms/stream->seq scans-with-details)]
+      (is (= (for [scan-id (range (* fake-pages scans-per-page))]
+               {:scan-id scan-id
+                :module (index->module scan-id)
+                :url details-query-url
+                :scan {}})
+             scans))
+      (is (ms/closed? scans-stream))
+      (is (ms/closed? scans-with-details)))))
 
 (deftest fim-report!-tests
   (with-redefs [scans/get-page! fake-get-page!]
@@ -93,5 +125,7 @@
                    :let [module (index->module scan-id)]
                    :when (= module "fim")]
                {:scan-id scan-id
-                :module module})
+                :module module
+                :url details-query-url
+                :scan {}})
              report)))))

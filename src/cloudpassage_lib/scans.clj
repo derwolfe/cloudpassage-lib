@@ -14,7 +14,7 @@
    [clj-time.format :as tf]
    [clojure.java.io :as io]))
 
-(def ^:private base-scans-url
+(def base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
 
 (def ^:private scans-path
