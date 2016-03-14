@@ -115,29 +115,44 @@
       (is (ms/closed? scans-stream)))))
 
 (deftest scans-with-details!-tests
-  (with-redefs [scans/get-page! fake-get-page!]
-    (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
-          scans-with-details (scans/scans-with-details! "lvh"
-                                                        "hunter2"
-                                                        scans-stream)
-          scans (ms/stream->seq scans-with-details)]
-      (is (= (for [scan-id (range (* fake-pages scans-per-page))]
-               {:scan-id scan-id
-                :module (index->module scan-id)
-                :url details-query-url
-                :scan {}})
-             scans))
-      (is (ms/closed? scans-stream))
-      (is (ms/closed? scans-with-details)))))
+  (testing "Typical scan returns expected page details."
+    (with-redefs [scans/get-page! fake-get-page!]
+      (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
+            scans-with-details (scans/scans-with-details! "lvh"
+                                                          "hunter2"
+                                                          scans-stream)
+            scans (ms/stream->seq scans-with-details)]
+        (is (= (for [scan-id (range (* fake-pages scans-per-page))]
+                 {:scan-id scan-id
+                  :module (index->module scan-id)
+                  :url details-query-url
+                  :scan {}})
+               scans))
+        (is (ms/closed? scans-stream))
+        (is (ms/closed? scans-with-details)))))
+  (testing "Blank input stream won't block."
+    (let [empty-stream (ms/stream 0)]
+      (ms/close! empty-stream)
+      (->> empty-stream
+           (scans/scans-with-details! '_ '_)
+           ms/stream->seq
+           doall))))
 
-(deftest fim-report!-tests
+(defn ^:private test-report
+  [report-fn! expected-module]
   (with-redefs [scans/get-page! fake-get-page!]
-    (let [report (scans/fim-report! "lvh" "hunter2")]
+    (let [report (report-fn! "lvh" "hunter2")]
       (is (= (for [scan-id (range (* fake-pages scans-per-page))
                    :let [module (index->module scan-id)]
-                   :when (= module "fim")]
+                   :when (= module expected-module)]
                {:scan-id scan-id
                 :module module
                 :url details-query-url
                 :scan {}})
              report)))))
+
+(deftest fim-report!-tests
+  (test-report scans/fim-report! "fim"))
+
+(deftest svm-report!-tests
+  (test-report scans/svm-report! "svm"))
