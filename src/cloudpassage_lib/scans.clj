@@ -91,7 +91,14 @@
   more illustration."
   [client-id client-secret scans-stream]
   (let [scans-with-details (ms/stream 10)
-        add-details (fn [scan])] ;; TODO: actually add details ;)
+        add-details
+        (fn [scan]
+          (md/chain
+           (get-page! client-id client-secret (:url scan))
+           (fn [response]
+             (ms/put! scans-with-details (assoc scan :scan (:scan response)))
+             (when (ms/drained? scans-stream)
+               (ms/close! scans-with-details)))))]
     (ms/consume-async add-details scans-stream)
     scans-with-details))
 
@@ -100,5 +107,6 @@
   [client-id client-secret]
   (let [opts {"since" (cpc/->cp-date (-> 3 hours ago))}]
     (->> (scans! client-id client-secret opts)
-         ms/stream->seq
-         (filter (fn [{:keys [module]}] (= module "fim"))))))
+         (ms/filter (fn [{:keys [module]}] (= module "fim")))
+         (scans-with-details! client-id client-secret)
+         ms/stream->seq)))
