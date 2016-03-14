@@ -53,7 +53,28 @@
 (def ^:private fake-pages 10)
 (def ^:private scans-per-page 10)
 (def ^:private details-query-url
-  (str scans/base-scans-url "?details=true"))
+  (#'scans/scans-url {"details" "true"}))
+
+(defn ^:private fake-scans-page
+  "Returns a paginated map, similar to what get-page! returns for top-level
+   queries."
+  [page-num next-page]
+  {:scans (for [index-in-page (range scans-per-page)
+                :let [scan-index (+ (* scans-per-page page-num)
+                                    index-in-page)]]
+            {:scan-id scan-index
+             :module (index->module scan-index)
+             :url details-query-url})
+   :pagination {:next next-page}})
+
+(defn ^:private fake-details-page
+  "Returns a simple map with scan details, similar to what get-page! returns
+   for a details-level query."
+  []
+  {:scan-id "0"
+   :module "fim"
+   :url details-query-url
+   :scan {}})
 
 (defn ^:private fake-get-page!
   "Returns two kinds of fake pages. If a 'details' query is specified, returns
@@ -79,17 +100,8 @@
             fudged (t/interval (-> 4 hours ago) (-> 3 hours ago))]
         (is (within? fudged since))))
     (if (query "details")
-      {:scan-id "0"
-       :module "fim"
-       :url details-query-url
-       :scan {}}
-      {:scans (for [index-in-page (range scans-per-page)
-                    :let [scan-index (+ (* scans-per-page page-num)
-                                        index-in-page)]]
-                {:scan-id scan-index
-                 :module (index->module scan-index)
-                 :url details-query-url})
-       :pagination {:next next-page}})))
+      (fake-details-page)
+      (fake-scans-page page-num next-page))))
 
 (deftest scans!-tests
   (with-redefs [scans/get-page! fake-get-page!]
