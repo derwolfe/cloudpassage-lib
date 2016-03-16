@@ -125,3 +125,8 @@
   "Get the current (recent) SVM report for a particular client."
   [client-id client-secret]
   (report-for-module! client-id client-secret "svm"))
+
+(defn sca-report!
+  "Get the current (recent) sca report for a particular client."
+  [client-id client-secret]
+  (report-for-module! client-id client-secret "sca"))
