@@ -156,3 +156,7 @@
 
 (deftest svm-report!-tests
   (test-report scans/svm-report! "svm"))
+
+(deftest sca-report!-tests
+  (test-report scans/sca-report! "sca"))
+
