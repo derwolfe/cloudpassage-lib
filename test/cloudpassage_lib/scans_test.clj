@@ -8,6 +8,8 @@
    [manifold.stream :as ms]
    [manifold.deferred :as md]
    [cemerick.url :as u]
+   [camel-snake-kebab.core :as cskc]
+   [camel-snake-kebab.extras :as cske]
    [taoensso.timbre :as timbre :refer [info spy]]))
 
 (deftest scans-url-tests
@@ -103,6 +105,14 @@
       (fake-details-page)
       (fake-scans-page page-num next-page))))
 
+(defn ^:private fake-get-page-with-snakes
+  "Return snake-cased versions of what is returned by `fake-get-page`"
+  [client-id client-secret url]
+  (cske/transform-keys
+   cskc/->snake_case_keyword
+   (fake-get-page! client-id client-secret url)))
+
+
 (deftest scans!-tests
   (with-redefs [scans/get-page! fake-get-page!]
     (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
@@ -149,7 +159,18 @@
                 :module module
                 :url details-query-url
                 :scan {}})
-             report)))))
+             report))))
+  (with-redefs [scans/get-page! fake-get-page-with-snakes]
+    (let [report (report-fn! "lvh" "hunter2")]
+      (is (= (for [scan-id (range (* fake-pages scans-per-page))
+                   :let [module (index->module scan-id)]
+                   :when (= module expected-module)]
+               {:scan-id scan-id
+                :module module
+                :url details-query-url
+                :scan {}})
+             report))))
+  )
 
 (deftest fim-report!-tests
   (test-report scans/fim-report! "fim"))
@@ -159,4 +180,3 @@
 
 (deftest sca-report!-tests
   (test-report scans/sca-report! "sca"))
-
