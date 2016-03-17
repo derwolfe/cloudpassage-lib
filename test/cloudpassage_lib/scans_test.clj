@@ -4,12 +4,11 @@
    [cloudpassage-lib.core :refer [cp-date-formatter]]
    [clj-time.format :as tf]
    [clj-time.core :as t :refer [millis hours ago within?]]
+   [clojure.string :as str]
    [clojure.test :refer [deftest testing is are]]
    [manifold.stream :as ms]
    [manifold.deferred :as md]
    [cemerick.url :as u]
-   [camel-snake-kebab.core :as cskc]
-   [camel-snake-kebab.extras :as cske]
    [taoensso.timbre :as timbre :refer [info spy]]))
 
 (deftest scans-url-tests
@@ -31,6 +30,22 @@
       {"modules" "fim"}
       {"modules" "fim"
        "since" "2016-01-01"})))
+
+(deftest scans-detail-url-tests
+  (is (= "https://api.cloudpassage.com/v1/scans/abcdef"
+         (#'scans/scans-detail-url "abcdef")))
+  (is (= "https://abc.com/v1/scans/abcdef"
+         (#'scans/scans-detail-url "https://abc.com/" "abcdef"))))
+
+(deftest finding-detail-url-tests
+  (is (= "https://api.cloudpassage.com/v1/scans/abcdef/findings/xyzzy"
+         (#'scans/finding-detail-url "abcdef" "xyzzy")))
+  (is (= "https://abc.com/v1/scans/abcdef/findings/xyzzy"
+         (#'scans/finding-detail-url "https://abc.com/" "abcdef" "xyzzy"))))
+
+(deftest scan-server-url-tests
+  (is (= "https://api.cloudpassage.com/v1/servers/server-id/svm"
+         (#'scans/scan-server-url "server-id" "svm"))))
 
 (defn ^:private index->module
   "Given an index of a (fake, test-only) scan, return a module for that scan."
@@ -93,19 +108,22 @@
       (fake-details-page)
       (fake-scans-page page-num next-page))))
 
-(defn ^:private fake-get-page-with-snakes
-  "Return snake-cased versions of what is returned by `fake-get-page`"
-  [client-id client-secret url]
-  (cske/transform-keys
-   cskc/->snake_case_keyword
-   (fake-get-page! client-id client-secret url)))
-
-(defn ^:private fake-get-page-with-bad-response!
-  "Like fake-get-page, but returns a bad status code."
-  [client-id client-secret url]
-  (is (= client-id "lvh"))
-  (is (= client-secret "hunter2"))
-  :cloudpassage-lib.core/fetch-error)
+(defn ^:private use-atom-log-appender!
+  []
+  (let [log (atom [])
+        log-appender-fn (fn [data]
+                          (let [{:keys [output-fn]} data
+                                formatted-output-str (output-fn data)]
+                            (swap! log conj formatted-output-str)))]
+    (timbre/merge-config!
+     {:appenders
+      {:atom-appender
+       {:async false
+        :enabled? true
+        :min-level nil
+        :output-fn :inherit
+        :fn log-appender-fn}}})
+    log))
 
 (deftest scans!-tests
   (testing "Successful scan with pagination."
@@ -118,22 +136,24 @@
                   :url details-query-url})
                scans))
         (is (ms/closed? scans-stream)))))
-  (testing "If an error occurs an empty result is returned."
-    ;;TODO: Replacing the error thing to detect it was logged might be helpful.
-    (with-redefs [scans/get-page! fake-get-page-with-bad-response!]
-      (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
-            result (clojure.string/join "" (ms/stream->seq scans-stream))]
-        (is (ms/drained? scans-stream))
-        (is (ms/closed? scans-stream))
-        (is (= result ""))))))
+  (testing "When an error is encountered, the error is logged and an empty list is returned"
+    (let [expected-error (str "Error getting scans for url: "
+                              "https://api.cloudpassage.com/v1/scans?modules=fim")
+          error-get-page (constantly :cloudpassage-lib.core/fetch-error)]
+      (with-redefs [scans/get-page! error-get-page]
+        (let [log (use-atom-log-appender!)
+              scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
+              result (ms/stream->seq scans-stream)]
+          (is (str/includes? (first @log) expected-error))
+          (is (ms/drained? scans-stream))
+          (is (ms/closed? scans-stream))
+          (is (empty? result)))))))
 
 (deftest scans-with-details!-tests
   (testing "Typical scan returns expected page details."
     (with-redefs [scans/get-page! fake-get-page!]
       (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
-            scans-with-details (scans/scans-with-details! "lvh"
-                                                          "hunter2"
-                                                          scans-stream)
+            scans-with-details (scans/scans-with-details! "lvh" "hunter2" scans-stream)
             scans (ms/stream->seq scans-with-details)]
         (is (= (for [scan-id (range (* fake-pages scans-per-page))]
                  {:scan-id scan-id
@@ -151,28 +171,104 @@
            ms/stream->seq
            doall))))
 
+(defn ^:private parse-fake-request
+  [client-id client-secret url]
+  (is (= client-id "lvh"))
+  (is (= client-secret "hunter2"))
+  (let [parsed-url (u/url url)
+        path (:path parsed-url)
+        query (:query parsed-url)
+        page-num (-> query (get "page" "1") Integer/parseInt)]
+    {:page-num page-num :path path}))
+
+(deftest list-servers!-tests
+  (testing "Returns all servers if paginated call is OK."
+    (with-redefs [scans/get-page!
+                  (fn [client-id client-secret url]
+                    (let [{:keys [page-num path]}
+                          (parse-fake-request client-id client-secret url)]
+                      (is (= "/v1/servers" path))
+                      (case page-num
+                        1 {:servers [{:id "server-id-1"} {:id "server-id-2"}]
+                           :pagination
+                           {:next (str @#'scans/base-servers-url "?page=2")}}
+                        2 {:servers [{:id "server-id-3"}]})))]
+      (let [server-stream (scans/list-servers! "lvh" "hunter2")
+            id-list (map :id (ms/stream->seq server-stream))]
+        (is (= ["server-id-1" "server-id-2" "server-id-3"] id-list))
+        (is (ms/closed? server-stream)))))
+  (testing "On error, fetching servers stops and the error is logged"
+    (with-redefs [scans/get-page!
+                  (fn [client-id client-secret url]
+                    (let [{:keys [page-num path]}
+                          (parse-fake-request client-id client-secret url)]
+                      (is (= "/v1/servers" path))
+                      (case page-num
+                        1 {:servers [{:id "server-id-1"} {:id "server-id-2"}]
+                           :pagination
+                           {:next (str @#'scans/base-servers-url "?page=2")}}
+                        2 :cloudpassage-lib.core/fetch-error)))]
+      (let [log (use-atom-log-appender!)
+            server-stream (scans/list-servers! "lvh" "hunter2")
+            id-list (map :id (ms/stream->seq server-stream))
+            expected-error (str "Error getting scans for url: "
+                                "https://api.cloudpassage.com/v1/servers/?page=2")]
+        (is (str/includes? (first @log) expected-error)
+            "logs the page fetch error")
+        (is (= ["server-id-1" "server-id-2"] id-list))
+        (is (ms/closed? server-stream))))))
+
+(deftest scan-each-server!-tests
+  (testing "Scan can handle an empty stream."
+    (let [input (ms/stream)]
+      (ms/close! input)
+      (let [scan-stream (scans/scan-each-server! "lvh" "hunter2" "svm" input)
+            scan-result (ms/stream->seq scan-stream)]
+        (is (empty? scan-result)))))
+  (testing "Returns an empty list when get-page returns :cloudpassage-lib.core/fetch-error"
+    (with-redefs [scans/get-page! (constantly :cloudpassage-lib.core/fetch-error)]
+      (let [input (ms/stream)]
+        (ms/put! input {:id "server-id-here"})
+        (ms/close! input)
+        (let [scan-result (ms/stream->seq
+                           (scans/scan-each-server! "lvh" "hunter2" "svm" input))]
+          (is (empty? scan-result))))))
+  (testing "Returns results of multiple server scans as a seq"
+    (with-redefs [scans/get-page!
+                  (fn [client-id client-secret url]
+                    (let [{:keys [path]}
+                          (parse-fake-request client-id client-secret url)]
+                      (case path
+                        "/v1/servers/server-1/svm" :one
+                        "/v1/servers/server-2/svm" :two
+                        "/v1/servers/server-3/svm" :three)))]
+      ;; note - if the input-stream's buffer is too small; then this test will
+      ;; fail. `put-all` must be able to place all elements in the stream''
+      ;; buffer size is set to 2, as it will be able to fill up with 3 elements
+      (let [input (ms/stream 2)]
+        (ms/put-all! input [{:id "server-1"} {:id "server-2"} {:id "server-3"}])
+        (ms/close! input)
+        (let [scan-result (ms/stream->seq
+                           (scans/scan-each-server! "lvh" "hunter2" "svm" input))]
+          (is (= [:one :two :three] scan-result)))))))
+
 (defn ^:private test-report
   [report-fn! expected-module]
-  (with-redefs [scans/get-page! fake-get-page!]
+  (with-redefs [scans/get-page!
+                (fn [client-id client-secret url]
+                  (let [{:keys [page-num path]}
+                        (parse-fake-request client-id client-secret url)]
+                    (cond
+                      ;; fetch the servers
+                      (= path "/v1/servers")
+                      {:servers [{:id "server-id-1"}]}
+
+                      ;; fetch the report for the server
+                      (= path (str "/v1/servers/server-id-1/" expected-module))
+                      {:id "1" :scan {:i_was_a_snake_cased_keyword 42}})))]
+
     (let [report (report-fn! "lvh" "hunter2")]
-      (is (= (for [scan-id (range (* fake-pages scans-per-page))
-                   :let [module (index->module scan-id)]
-                   :when (= module expected-module)]
-               {:scan-id scan-id
-                :module module
-                :url details-query-url
-                :scan {}})
-             report))))
-  (with-redefs [scans/get-page! fake-get-page-with-snakes]
-    (let [report (report-fn! "lvh" "hunter2")]
-      (is (= (for [scan-id (range (* fake-pages scans-per-page))
-                   :let [module (index->module scan-id)]
-                   :when (= module expected-module)]
-               {:scan-id scan-id
-                :module module
-                :url details-query-url
-                :scan {}})
-             report)))))
+      (is (= '({:id "1" :scan {:i-was-a-snake-cased-keyword 42}}) report)))))
 
 (deftest fim-report!-tests
   (test-report scans/fim-report! "fim"))
