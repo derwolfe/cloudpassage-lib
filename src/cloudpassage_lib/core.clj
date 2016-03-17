@@ -84,6 +84,11 @@
         (error "error fetching events page:" (.getMessage exc))
         ::fetch-error)))))
 
+(defn page-response-ok?
+  "Returns false if there was an error retrieving a page."
+  [response]
+  (not= ::fetch-error response))
+
 (defn fetch-token!
   "Fetch an access token for the cloudpassage api that belongs to the client-id/secret pair.
    If a token doesn't exist in Redis, then this will hit the cloudpassage api to obtain one.

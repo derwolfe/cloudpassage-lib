@@ -52,8 +52,8 @@
     1 "svm"    ;; software version management
     2 "ccm"))  ;; configuration change management
 
-(def ^:private fake-pages 10)
-(def ^:private scans-per-page 10)
+(def ^:private fake-pages 3)
+(def ^:private scans-per-page 5)
 (def ^:private details-query-url
   (#'scans/scans-url {"details" "true"}))
 
@@ -62,7 +62,7 @@
    queries."
   [page-num next-page]
   {:scans (for [index-in-page (range scans-per-page)
-                :let [scan-index (+ (* scans-per-page page-num)
+                :let [scan-index (+ (* scans-per-page (dec page-num))
                                     index-in-page)]]
             {:scan-id scan-index
              :module (index->module scan-index)
@@ -92,7 +92,7 @@
   (let [parsed-url (u/url url)
         query (:query parsed-url)
         page-num (-> query
-                     (get "next" "0")
+                     (get "next" "1")
                      Integer/parseInt)
         next-page (if (< page-num fake-pages)
                     (str (assoc-in parsed-url [:query "next"] (inc page-num)))
@@ -112,16 +112,32 @@
    cskc/->snake_case_keyword
    (fake-get-page! client-id client-secret url)))
 
+(defn ^:private fake-get-page-with-bad-response!
+  "Like fake-get-page, but returns a bad status code."
+  [client-id client-secret url]
+  (is (= client-id "lvh"))
+  (is (= client-secret "hunter2"))
+  :cloudpassage-lib.core/fetch-error)
+
 (deftest scans!-tests
-  (with-redefs [scans/get-page! fake-get-page!]
-    (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
-          scans (ms/stream->seq scans-stream)]
-      (is (= (for [scan-id (range (* fake-pages scans-per-page))]
-               {:scan-id scan-id
-                :module (index->module scan-id)
-                :url details-query-url})
-             scans))
-      (is (ms/closed? scans-stream)))))
+  (testing "Successful scan with pagination."
+    (with-redefs [scans/get-page! fake-get-page!]
+      (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
+            scans (ms/stream->seq scans-stream)]
+        (is (= (for [scan-id (range (* fake-pages scans-per-page))]
+                 {:scan-id scan-id
+                  :module (index->module scan-id)
+                  :url details-query-url})
+               scans))
+        (is (ms/closed? scans-stream)))))
+  (testing "If an error occurs an empty result is returned."
+    ;;TODO: Replacing the error thing to detect it was logged might be helpful.
+    (with-redefs [scans/get-page! fake-get-page-with-bad-response!]
+      (let [scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
+            result (clojure.string/join "" (ms/stream->seq scans-stream))]
+        (is (ms/drained? scans-stream))
+        (is (ms/closed? scans-stream))
+        (is (= result ""))))))
 
 (deftest scans-with-details!-tests
   (testing "Typical scan returns expected page details."
