@@ -1,3 +1,7 @@
+# 0.1.7
+
+- Add `sca-report!` reporting capability
+
 # 0.1.6
 
 - Add `svm-report!` reporting capability
