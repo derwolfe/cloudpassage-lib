@@ -1,3 +1,7 @@
+# 0.2.0
+
+- Use kebab-cased keywords in responses provided by `sca-report!`, `svm-report!`, and `fim-report!`.
+
 # 0.1.7
 
 - Add `sca-report!` reporting capability
