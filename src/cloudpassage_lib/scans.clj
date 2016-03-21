@@ -9,12 +9,13 @@
    [manifold.stream :as ms]
    [environ.core :refer [env]]
    [cloudpassage-lib.core :as cpc]
-   [taoensso.timbre :as timbre :refer [info spy]]
+   [taoensso.timbre :as timbre :refer [error info spy]]
    [clj-time.core :as t :refer [hours ago]]
    [clj-time.format :as tf]
    [camel-snake-kebab.core :as cskc]
    [camel-snake-kebab.extras :as cske]
-   [clojure.java.io :as io]))
+   [clojure.java.io :as io]
+   [clojure.string :refer [blank?]]))
 
 (def ^:private base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
@@ -61,27 +62,37 @@
   (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))]
     (cpc/get-single-events-page! token url)))
 
+(defn ^:private stream-paginated-resources!
+  "Returns a stream of resources coming from a paginated list."
+  [client-id client-secret initial-url resource-key]
+  (let [urls-stream (ms/stream 10)
+        resources-stream (ms/stream 20)]
+    (ms/put! urls-stream initial-url)
+    (ms/connect-via
+     urls-stream
+     (fn [url]
+       (md/chain
+        (get-page! client-id client-secret url)
+        (fn [response]
+          (if (cpc/page-response-ok? response)
+            (let [resource (resource-key response)
+                  pagination (:pagination response)
+                  next-url (:next pagination)]
+              (if (blank? next-url)
+                (do (info "no more urls to fetch")
+                    (ms/close! urls-stream))
+                (ms/put! urls-stream next-url))
+              (ms/put-all! resources-stream resource))
+            (do (error "Error getting scans for url: " url)
+                (ms/close! urls-stream)
+                (Exception. "Error fetching scans."))))))
+     resources-stream)
+    resources-stream))
+
 (defn scans!
   "Returns a stream of historical scan results matching opts."
   [client-id client-secret opts]
-  (let [urls-stream (ms/stream 10) ;; absolutely no science here
-        scans-stream (ms/stream 20) ;; nor here
-        shovel (fn [url]
-                 (md/chain
-                  (get-page! client-id client-secret url)
-                  ;; TODO: error handling here?
-                  (fn [response]
-                    (let [{:keys [pagination scans]} response
-                          next-url (:next pagination)]
-                      (if (or (= "" next-url) (nil? next-url))
-                        (do (info "no more urls to fetch")
-                            (ms/close! urls-stream)
-                            (ms/close! scans-stream))
-                        (ms/put! urls-stream next-url))
-                      (ms/put-all! scans-stream scans)))))]
-    (ms/put! urls-stream (scans-url opts))
-    (ms/consume-async shovel urls-stream)
-    scans-stream))
+  (stream-paginated-resources! client-id client-secret (scans-url opts) :scans))
 
 (defn scans-with-details!
   "Returns a stream of historical scan results with their details.
@@ -92,20 +103,16 @@
   details (iff the details are FIM). See CloudPassage API docs for
   more illustration."
   [client-id client-secret scans-stream]
-  (let [scans-with-details (ms/stream 10)
-        add-details
-        (fn [scan]
-          (md/chain
-           (get-page! client-id client-secret (:url scan))
-           (fn [response]
-             (ms/put! scans-with-details (assoc scan :scan (:scan response)))
-             (when (ms/drained? scans-stream)
-               (ms/close! scans-with-details)))))]
-    (ms/consume-async add-details scans-stream)
-    ;; TODO: Figure out a way to automatically close the stream this function
-    ;;       returns without using the lower-level on-drained callback.
-    (ms/on-drained scans-stream #(ms/close! scans-with-details))
-    scans-with-details))
+  (let [scans-with-details-stream (ms/stream 10)]
+    (ms/connect-via
+     scans-stream
+     (fn [scan]
+       (md/chain
+        (get-page! client-id client-secret (:url scan))
+        (fn [response]
+          (ms/put! scans-with-details-stream (assoc scan :scan (:scan response))))))
+     scans-with-details-stream)
+    scans-with-details-stream))
 
 (defn ^:private report-for-module!
   "Get recent report data for a certain client, and filter based on module."
