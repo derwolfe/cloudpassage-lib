@@ -20,9 +20,6 @@
 (def ^:private base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
 
-(def ^:private scans-path
-  (partial str "/v1/scans/"))
-
 (defn ^:private maybe-flatten-list
   [maybe-list]
   (if (or (string? maybe-list) (nil? maybe-list))
@@ -37,24 +34,6 @@
      (-> (u/url url)
          (update :query merge opts)
          str))))
-
-(defn ^:private scans-detail-url
-  "Compute the URL for a scan detail."
-  ([scan-id]
-   (scans-detail-url base-scans-url scan-id))
-  ([url scan-id]
-   (-> (u/url url)
-       (assoc :path (scans-path scan-id))
-       str)))
-
-(defn ^:private finding-detail-url
-  "Compute the URL for a particular finding in a particular scan."
-  ([scan-id finding-id]
-   (finding-detail-url base-scans-url scan-id finding-id))
-  ([url scan-id finding-id]
-   (-> (u/url url)
-       (assoc :path (scans-path scan-id "/findings/" finding-id))
-       str)))
 
 (defn get-page!
   "Gets a page, and handles auth for you."
