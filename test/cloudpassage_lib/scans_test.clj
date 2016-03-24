@@ -32,18 +32,6 @@
       {"modules" "fim"
        "since" "2016-01-01"})))
 
-(deftest scans-detail-url-tests
-  (is (= "https://api.cloudpassage.com/v1/scans/abcdef"
-         (#'scans/scans-detail-url "abcdef")))
-  (is (= "https://abc.com/v1/scans/abcdef"
-         (#'scans/scans-detail-url "https://abc.com/" "abcdef"))))
-
-(deftest finding-detail-url-tests
-  (is (= "https://api.cloudpassage.com/v1/scans/abcdef/findings/xyzzy"
-         (#'scans/finding-detail-url "abcdef" "xyzzy")))
-  (is (= "https://abc.com/v1/scans/abcdef/findings/xyzzy"
-         (#'scans/finding-detail-url "https://abc.com/" "abcdef" "xyzzy"))))
-
 (defn ^:private index->module
   "Given an index of a (fake, test-only) scan, return a module for that scan."
   [i]
