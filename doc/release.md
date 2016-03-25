@@ -20,7 +20,13 @@ We release this software on
    [cloudpassage-lib](https://clojars.org/cloudpassage-lib) group on Clojars.
    Otherwise, you will not have the authorization to upload releases.
 
-4. Assuming you have an up-to-date copy of the cloudpassage-lib git repository
+4. You'll need to install the `lein-release` plugin by adding it to your user
+   profile. To do this, create a file `~/.lein/profiles.clj` if it doesn't
+   already exist, and update your configuration using the following snippet:
+   ```clojure
+   {:user {:plugins [[lein-release "1.0.9"]]}}
+   ```
+5. Assuming you have an up-to-date copy of the cloudpassage-lib git repository
    checked out, you are now ready to prepare a release.
 
 ## Packaging and uploading a release
