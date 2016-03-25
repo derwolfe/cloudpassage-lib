@@ -20,9 +20,6 @@
 (def ^:private base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
 
-(def ^:private scans-path
-  (partial str "/v1/scans/"))
-
 (def ^:private base-servers-url
   "https://api.cloudpassage.com/v1/servers/")
 
@@ -45,24 +42,6 @@
   "URL for fetching most recent scan results of a server."
   [server-id module]
   (str (u/url base-servers-url server-id module)))
-
-(defn ^:private scans-detail-url
-  "Compute the URL for a scan detail."
-  ([scan-id]
-   (scans-detail-url base-scans-url scan-id))
-  ([url scan-id]
-   (-> (u/url url)
-       (assoc :path (scans-path scan-id))
-       str)))
-
-(defn ^:private finding-detail-url
-  "Compute the URL for a particular finding in a particular scan."
-  ([scan-id finding-id]
-   (finding-detail-url base-scans-url scan-id finding-id))
-  ([url scan-id finding-id]
-   (-> (u/url url)
-       (assoc :path (scans-path scan-id "/findings/" finding-id))
-       str)))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
