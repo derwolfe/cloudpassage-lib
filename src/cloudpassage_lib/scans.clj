@@ -79,18 +79,14 @@
        (md/chain
         (get-page! client-id client-secret url)
         (fn [response]
-          (if (cpc/page-response-ok? response)
-            (let [resource (resource-key response)
-                  pagination (:pagination response)
-                  next-url (:next pagination)]
-              (if (blank? next-url)
-                (do (info "no more urls to fetch")
-                    (ms/close! urls-stream))
-                (ms/put! urls-stream next-url))
-              (ms/put-all! resources-stream resource))
-            (do (error "Error getting scans for url:" url)
-                (ms/close! urls-stream)
-                (Exception. "Error fetching scans."))))))
+          (let [resource (resource-key response)
+                pagination (:pagination response)
+                next-url (:next pagination)]
+            (if (blank? next-url)
+              (do (info "no more urls to fetch")
+                  (ms/close! urls-stream))
+              (ms/put! urls-stream next-url))
+            (ms/put-all! resources-stream resource)))))
      resources-stream)
     resources-stream))
 
@@ -140,17 +136,13 @@
        (md/chain
         (scan-server! id module)
         (fn [response]
-          (if (cpc/page-response-ok? response)
-            (ms/put! server-details-stream response)
-            (error "Error getting scans for server" id)))))
+          (ms/put! server-details-stream response))))
      server-details-stream)
     server-details-stream))
 
 (defn ^:private report-for-module!
   "Get recent report data for a certain client, and filter based on module."
   [client-id client-secret module-name]
-  ;; The docs say we can use "module" as a query parameter but it does
-  ;; not work for FIM or SVM, so we have to filter out those items instead.
   (->> (list-servers! client-id client-secret)
        (scan-each-server! client-id client-secret module-name)
        (ms/map #(cske/transform-keys cskc/->kebab-case-keyword %))

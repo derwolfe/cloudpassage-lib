@@ -158,19 +158,7 @@
                   :module (index->module scan-id)
                   :url details-query-url})
                scans))
-        (is (ms/closed? scans-stream)))))
-  (testing "When an error is encountered, the error is logged and an empty list is returned"
-    (let [expected-error (str "Error getting scans for url: "
-                              "https://api.cloudpassage.com/v1/scans?modules=fim")
-          error-get-page (constantly :cloudpassage-lib.core/fetch-error)]
-      (with-redefs [scans/get-page! error-get-page]
-        (let [log (use-atom-log-appender!)
-              scans-stream (scans/scans! "lvh" "hunter2" {"modules" "fim"})
-              result (ms/stream->seq scans-stream)]
-          (is (str/includes? (first @log) expected-error))
-          (is (ms/drained? scans-stream))
-          (is (ms/closed? scans-stream))
-          (is (empty? result)))))))
+        (is (ms/closed? scans-stream))))))
 
 (deftest scans-with-details!-tests
   (testing "Typical scan returns expected page details."
@@ -219,26 +207,6 @@
       (let [server-stream (scans/list-servers! "lvh" "hunter2")
             id-list (map :id (ms/stream->seq server-stream))]
         (is (= ["server-id-1" "server-id-2" "server-id-3"] id-list))
-        (is (ms/closed? server-stream)))))
-  (testing "On error, fetching servers stops and the error is logged"
-    (with-redefs [scans/get-page!
-                  (fn [client-id client-secret url]
-                    (let [{:keys [page-num path]}
-                          (parse-fake-request client-id client-secret url)]
-                      (is (= "/v1/servers" path))
-                      (case page-num
-                        1 {:servers [{:id "server-id-1"} {:id "server-id-2"}]
-                           :pagination
-                           {:next (str @#'scans/base-servers-url "?page=2")}}
-                        2 :cloudpassage-lib.core/fetch-error)))]
-      (let [log (use-atom-log-appender!)
-            server-stream (scans/list-servers! "lvh" "hunter2")
-            id-list (map :id (ms/stream->seq server-stream))
-            expected-error (str "Error getting scans for url: "
-                                "https://api.cloudpassage.com/v1/servers/?page=2")]
-        (is (str/includes? (first @log) expected-error)
-            "logs the page fetch error")
-        (is (= ["server-id-1" "server-id-2"] id-list))
         (is (ms/closed? server-stream))))))
 
 (deftest scan-each-server!-tests
@@ -248,14 +216,6 @@
       (let [scan-stream (scans/scan-each-server! "lvh" "hunter2" "svm" input)
             scan-result (ms/stream->seq scan-stream)]
         (is (empty? scan-result)))))
-  (testing "Returns an empty list when get-page returns :cloudpassage-lib.core/fetch-error"
-    (with-redefs [scans/get-page! (constantly :cloudpassage-lib.core/fetch-error)]
-      (let [input (ms/stream)]
-        (ms/put! input {:id "server-id-here"})
-        (ms/close! input)
-        (let [scan-result (ms/stream->seq
-                           (scans/scan-each-server! "lvh" "hunter2" "svm" input))]
-          (is (empty? scan-result))))))
   (testing "Returns results of multiple server scans as a seq"
     (with-redefs [scans/get-page!
                   (fn [client-id client-secret url]
