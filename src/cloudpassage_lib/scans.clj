@@ -46,7 +46,7 @@
 
 (defn ^:private get-page-retry!
   "Gets a page, and handles retries on error."
-  [token url num-retries]
+  [token url num-retries timeout]
   (md/chain
    (cpc/get-single-events-page! token url)
    (fn [response]
@@ -58,14 +58,14 @@
        :else
        (do (error "Couldn't fetch page. Retrying.")
            (mt/in
-            3000
-            #(get-page-retry! token url (dec num-retries))))))))
+            timeout
+            #(get-page-retry! token url (dec num-retries) timeout)))))))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
   [client-id client-secret url]
   (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))]
-    (get-page-retry! token url 3)))
+    (get-page-retry! token url 3 3000)))
 
 (defn ^:private stream-paginated-resources!
   "Returns a stream of resources coming from a paginated list."

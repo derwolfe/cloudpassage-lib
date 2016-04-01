@@ -65,7 +65,7 @@
               num-retries 3
               log (use-atom-log-appender!)]
           (mt/with-clock c
-            (let [response (#'scans/get-page-retry! '_ '_ num-retries)]
+            (let [response (#'scans/get-page-retry! '_ '_ num-retries timeout)]
               (mt/advance c (* timeout num-retries))
               (is (thrown-with-msg?
                    Exception
@@ -83,7 +83,7 @@
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [log (use-atom-log-appender!)
               ;; Returns instantly since no retries are necessary
-              response @(#'scans/get-page-retry! '_ '_ 3)]
+              response @(#'scans/get-page-retry! '_ '_ 3 3000)]
           (is (= scan response))
           (is (= 0 (count @log))))))))
 
