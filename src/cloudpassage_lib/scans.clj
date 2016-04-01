@@ -43,6 +43,17 @@
   [server-id module]
   (str (u/url base-servers-url server-id module)))
 
+(defn ^:private get-page-retry!
+  "Gets a page, and handles auth for you."
+  [token url num-tries]
+  (let [response (cpc/get-single-events-page! token url)]
+    (cond
+      (cpc/page-response-ok? response) response
+      (zero? num-tries) 'fail
+      :else
+      (do (error "Couldn't fetch page. Retrying.")
+          (recur token url (dec num-tries))))))
+
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
   [client-id client-secret url]

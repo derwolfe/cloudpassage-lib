@@ -1,7 +1,7 @@
 (ns cloudpassage-lib.scans-test
   (:require
    [cloudpassage-lib.scans :as scans]
-   [cloudpassage-lib.core :refer [cp-date-formatter]]
+   [cloudpassage-lib.core :as cpc :refer [cp-date-formatter]]
    [clj-time.format :as tf]
    [clj-time.core :as t :refer [millis hours ago within?]]
    [clojure.string :as str]
@@ -10,6 +10,23 @@
    [manifold.deferred :as md]
    [cemerick.url :as u]
    [taoensso.timbre :as timbre :refer [info spy]]))
+
+(defn ^:private use-atom-log-appender!
+  []
+  (let [log (atom [])
+        log-appender-fn (fn [data]
+                          (let [{:keys [output-fn]} data
+                                formatted-output-str (output-fn data)]
+                            (swap! log conj formatted-output-str)))]
+    (timbre/merge-config!
+     {:appenders
+      {:atom-appender
+       {:async false
+        :enabled? true
+        :min-level nil
+        :output-fn :inherit
+        :fn log-appender-fn}}})
+    log))
 
 (deftest scans-url-tests
   (are [opts expected] (= expected (#'scans/scans-url opts))
@@ -34,6 +51,25 @@
 (deftest scan-server-url-tests
   (is (= "https://api.cloudpassage.com/v1/servers/server-id/svm"
          (#'scans/scan-server-url "server-id" "svm"))))
+
+(deftest get-page-retry!-tests
+  (testing "Returns 'fail after three tries"
+    (let [fake-get (constantly :cloudpassage-lib.core/fetch-error)]
+      (with-redefs [cpc/get-single-events-page! fake-get]
+        (let [num-tries 3
+              log (use-atom-log-appender!)
+              response (#'scans/get-page-retry! '_ '_ num-tries)]
+          (is (= 'fail response))
+          (is (= num-tries (count @log)))
+          (is (str/includes? (first @log) "Couldn't fetch page. Retrying."))))))
+  (testing "Doesn't retry on good response"
+    (let [scan {:scan-id 1 :module "fim"}
+          fake-get (constantly scan)]
+      (with-redefs [cpc/get-single-events-page! fake-get]
+        (let [log (use-atom-log-appender!)
+              response (#'scans/get-page-retry! '_ '_ 3)]
+          (is (= scan response))
+          (is (= 0 (count @log))))))))
 
 (defn ^:private index->module
   "Given an index of a (fake, test-only) scan, return a module for that scan."
@@ -95,23 +131,6 @@
     (if (query "details")
       (fake-details-page)
       (fake-scans-page page-num next-page))))
-
-(defn ^:private use-atom-log-appender!
-  []
-  (let [log (atom [])
-        log-appender-fn (fn [data]
-                          (let [{:keys [output-fn]} data
-                                formatted-output-str (output-fn data)]
-                            (swap! log conj formatted-output-str)))]
-    (timbre/merge-config!
-     {:appenders
-      {:atom-appender
-       {:async false
-        :enabled? true
-        :min-level nil
-        :output-fn :inherit
-        :fn log-appender-fn}}})
-    log))
 
 (deftest scans!-tests
   (testing "Successful scan with pagination."
