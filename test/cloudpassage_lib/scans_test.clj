@@ -6,8 +6,9 @@
    [clj-time.core :as t :refer [millis hours ago within?]]
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is are]]
-   [manifold.stream :as ms]
    [manifold.deferred :as md]
+   [manifold.stream :as ms]
+   [manifold.time :as mt]
    [cemerick.url :as u]
    [taoensso.timbre :as timbre :refer [info spy]]))
 
@@ -53,19 +54,24 @@
          (#'scans/scan-server-url "server-id" "svm"))))
 
 (deftest get-page-retry!-tests
-  (testing "Returns 'fail after three tries"
+  (testing "Throws an exception after three retries"
     (let [fake-get (fn [token uri]
                      (let [d (md/deferred)]
                        (md/success! d :cloudpassage-lib.core/fetch-error)
                        d))]
       (with-redefs [cpc/get-single-events-page! fake-get]
-        (let [num-tries 3
+        (let [c (mt/mock-clock 0)
+              timeout 3000
+              num-retries 3
               log (use-atom-log-appender!)]
-          (is (thrown-with-msg?
-               Exception
-               #"Error fetching scans\."
-               @(#'scans/get-page-retry! '_ '_ num-tries)))
-          (is (= (inc num-tries) (count @log)))
+          (mt/with-clock c
+            (let [response (#'scans/get-page-retry! '_ '_ num-retries)]
+              (mt/advance c (* timeout num-retries))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Error fetching scans\."
+                   @response))))
+          (is (= (inc num-retries) (count @log)))
           (is (str/includes? (first @log) "Couldn't fetch page. Retrying."))
           (is (str/includes? (last @log) "No more retries."))))))
   (testing "Doesn't retry on good response"
@@ -76,6 +82,7 @@
                        d))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [log (use-atom-log-appender!)
+              ;; Returns instantly since no retries are necessary
               response @(#'scans/get-page-retry! '_ '_ 3)]
           (is (= scan response))
           (is (= 0 (count @log))))))))

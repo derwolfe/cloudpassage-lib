@@ -7,6 +7,7 @@
    [aleph.http :as http]
    [manifold.deferred :as md]
    [manifold.stream :as ms]
+   [manifold.time :as mt]
    [environ.core :refer [env]]
    [cloudpassage-lib.core :as cpc]
    [taoensso.timbre :as timbre :refer [error info spy]]
@@ -56,7 +57,9 @@
            (throw (Exception. "Error fetching scans.")))
        :else
        (do (error "Couldn't fetch page. Retrying.")
-           (get-page-retry! token url (dec num-retries)))))))
+           (mt/in
+            3000
+            #(get-page-retry! token url (dec num-retries))))))))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
