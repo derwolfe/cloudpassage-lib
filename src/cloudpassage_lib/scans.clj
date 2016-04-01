@@ -7,6 +7,7 @@
    [aleph.http :as http]
    [manifold.deferred :as md]
    [manifold.stream :as ms]
+   [manifold.time :as mt]
    [environ.core :refer [env]]
    [cloudpassage-lib.core :as cpc]
    [taoensso.timbre :as timbre :refer [error info spy]]
@@ -43,11 +44,28 @@
   [server-id module]
   (str (u/url base-servers-url server-id module)))
 
+(defn ^:private get-page-retry!
+  "Gets a page, and handles retries on error."
+  [token url num-retries timeout]
+  (md/chain
+   (cpc/get-single-events-page! token url)
+   (fn [response]
+     (cond
+       (cpc/page-response-ok? response) response
+       (zero? num-retries)
+       (do (error "No more retries.")
+           (throw (Exception. "Error fetching scans.")))
+       :else
+       (do (error "Couldn't fetch page. Retrying.")
+           (mt/in
+            timeout
+            #(get-page-retry! token url (dec num-retries) timeout)))))))
+
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
   [client-id client-secret url]
   (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))]
-    (cpc/get-single-events-page! token url)))
+    (get-page-retry! token url 3 3000)))
 
 (defn ^:private stream-paginated-resources!
   "Returns a stream of resources coming from a paginated list."
@@ -61,18 +79,14 @@
        (md/chain
         (get-page! client-id client-secret url)
         (fn [response]
-          (if (cpc/page-response-ok? response)
-            (let [resource (resource-key response)
-                  pagination (:pagination response)
-                  next-url (:next pagination)]
-              (if (blank? next-url)
-                (do (info "no more urls to fetch")
-                    (ms/close! urls-stream))
-                (ms/put! urls-stream next-url))
-              (ms/put-all! resources-stream resource))
-            (do (error "Error getting scans for url:" url)
-                (ms/close! urls-stream)
-                (Exception. "Error fetching scans."))))))
+          (let [resource (resource-key response)
+                pagination (:pagination response)
+                next-url (:next pagination)]
+            (if (blank? next-url)
+              (do (info "no more urls to fetch")
+                  (ms/close! urls-stream))
+              (ms/put! urls-stream next-url))
+            (ms/put-all! resources-stream resource)))))
      resources-stream)
     resources-stream))
 
@@ -122,17 +136,13 @@
        (md/chain
         (scan-server! id module)
         (fn [response]
-          (if (cpc/page-response-ok? response)
-            (ms/put! server-details-stream response)
-            (error "Error getting scans for server" id)))))
+          (ms/put! server-details-stream response))))
      server-details-stream)
     server-details-stream))
 
 (defn ^:private report-for-module!
   "Get recent report data for a certain client, and filter based on module."
   [client-id client-secret module-name]
-  ;; The docs say we can use "module" as a query parameter but it does
-  ;; not work for FIM or SVM, so we have to filter out those items instead.
   (->> (list-servers! client-id client-secret)
        (scan-each-server! client-id client-secret module-name)
        (ms/map #(cske/transform-keys cskc/->kebab-case-keyword %))
