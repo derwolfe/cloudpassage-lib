@@ -44,25 +44,25 @@
   (str (u/url base-servers-url server-id module)))
 
 (defn ^:private get-page-retry!
-  "Gets a page, and handles auth for you."
-  [token url num-tries]
+  "Gets a page, and handles retries on error."
+  [token url num-retries]
   (md/chain
    (cpc/get-single-events-page! token url)
    (fn [response]
      (cond
        (cpc/page-response-ok? response) response
-       (zero? num-tries)
+       (zero? num-retries)
        (do (error "No more retries.")
            (throw (Exception. "Error fetching scans.")))
        :else
        (do (error "Couldn't fetch page. Retrying.")
-           (get-page-retry! token url (dec num-tries)))))))
+           (get-page-retry! token url (dec num-retries)))))))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
   [client-id client-secret url]
   (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))]
-    (cpc/get-single-events-page! token url)))
+    (get-page-retry! token url 3)))
 
 (defn ^:private stream-paginated-resources!
   "Returns a stream of resources coming from a paginated list."
