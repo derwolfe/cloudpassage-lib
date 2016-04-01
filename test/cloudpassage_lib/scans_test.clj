@@ -54,20 +54,29 @@
 
 (deftest get-page-retry!-tests
   (testing "Returns 'fail after three tries"
-    (let [fake-get (constantly :cloudpassage-lib.core/fetch-error)]
+    (let [fake-get (fn [token uri]
+                     (let [d (md/deferred)]
+                       (md/success! d :cloudpassage-lib.core/fetch-error)
+                       d))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [num-tries 3
-              log (use-atom-log-appender!)
-              response (#'scans/get-page-retry! '_ '_ num-tries)]
-          (is (= 'fail response))
-          (is (= num-tries (count @log)))
-          (is (str/includes? (first @log) "Couldn't fetch page. Retrying."))))))
+              log (use-atom-log-appender!)]
+          (is (thrown-with-msg?
+               Exception
+               #"Error fetching scans\."
+               @(#'scans/get-page-retry! '_ '_ num-tries)))
+          (is (= (inc num-tries) (count @log)))
+          (is (str/includes? (first @log) "Couldn't fetch page. Retrying."))
+          (is (str/includes? (last @log) "No more retries."))))))
   (testing "Doesn't retry on good response"
     (let [scan {:scan-id 1 :module "fim"}
-          fake-get (constantly scan)]
+          fake-get (fn [token uri]
+                     (let [d (md/deferred)]
+                       (md/success! d scan)
+                       d))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [log (use-atom-log-appender!)
-              response (#'scans/get-page-retry! '_ '_ 3)]
+              response @(#'scans/get-page-retry! '_ '_ 3)]
           (is (= scan response))
           (is (= 0 (count @log))))))))
 

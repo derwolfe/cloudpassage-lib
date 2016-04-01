@@ -46,13 +46,17 @@
 (defn ^:private get-page-retry!
   "Gets a page, and handles auth for you."
   [token url num-tries]
-  (let [response (cpc/get-single-events-page! token url)]
-    (cond
-      (cpc/page-response-ok? response) response
-      (zero? num-tries) 'fail
-      :else
-      (do (error "Couldn't fetch page. Retrying.")
-          (recur token url (dec num-tries))))))
+  (md/chain
+   (cpc/get-single-events-page! token url)
+   (fn [response]
+     (cond
+       (cpc/page-response-ok? response) response
+       (zero? num-tries)
+       (do (error "No more retries.")
+           (throw (Exception. "Error fetching scans.")))
+       :else
+       (do (error "Couldn't fetch page. Retrying.")
+           (get-page-retry! token url (dec num-tries)))))))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
