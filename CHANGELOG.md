@@ -1,3 +1,7 @@
+# 0.2.2
+
+- Add retry logic on HTTP errors (#41)
+
 # 0.2.1
 
 - Add some error handling
