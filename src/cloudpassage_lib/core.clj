@@ -58,9 +58,8 @@
         token @(md/chain
                 (http/post auth-uri {:headers auth-header})
                 :body
-                bs/to-string
-                (fn [response]
-                  (json/parse-string response true)))]
+                bs/to-reader
+                #(json/parse-stream % true))]
     token))
 
 (defn get-single-events-page!
@@ -75,9 +74,8 @@
      (md/chain
       (http/get uri {:headers auth-header})
       :body
-      bs/to-string
-      (fn [body-bytes]
-        (json/parse-string body-bytes true)))
+      bs/to-reader
+      #(json/parse-stream % true))
      (md/catch
       Exception
       (fn [exc]
