@@ -45,7 +45,7 @@
   [date]
   (f/unparse cp-date-formatter date))
 
-(defn retry!
+(defn retry
   "Takes a function that returns a deferred. Retries that function
   until it succeeds or the number of failures equal the stop value
 
@@ -80,7 +80,7 @@
            (do
              (error "Failed retrying" @tries "times; stopping")
              ::retry-failure)
-           ;; try again after the waiting period
+           ;; try again, after the waiting period
            (and (< @tries stop) (= ::local-retry-error val))
            (let [wait (mt/seconds (math/expt p @tries))]
              (mt/in wait md/recur))))))))
