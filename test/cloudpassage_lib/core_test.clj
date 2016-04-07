@@ -5,6 +5,8 @@
             [clj-time.core :as ct]
             [cheshire.core :as json]
             [clojure.math.numeric-tower :as math]
+            [clojure.string :as str]
+            [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
             [cloudpassage-lib.core :as core]))
 
 (deftest retry!-tests
@@ -12,22 +14,31 @@
     (let [c (mt/mock-clock)
           attempts (atom 0)
           p 5
+          exc "inner explosion"
           f (fn []
               (swap! attempts inc)
               (let [d (md/deferred)]
-                (md/error! d (Exception. "inner explosion"))
+                (md/error! d (Exception. exc))
                 d))
           stop 3]
       (mt/with-clock c
-        (let [ret (core/retry! p f stop)]
+        (let [log (use-atom-log-appender!)
+              ret (core/retry! p f stop)]
           (is (= 1 @attempts))
+          (is (str/includes? (first @log) (str "Failure retrying: " exc)))
 
           (mt/advance c (mt/seconds p))
           (is (= 2 @attempts))
+          (is (str/includes? (second @log) (str "Failure retrying: " exc)))
 
           (mt/advance c (mt/seconds (math/expt p 2)))
           (is (= 3 @attempts))
-          (is (= @ret :cloudpassage-lib.core/retry-failure))))))
+          (is (str/includes? (second (rest @log)) (str "Failure retrying: " exc)))
+
+          (is (str/includes?
+               (last @log)
+               "Failed retrying 3 times; stopping"))
+          (is (= :cloudpassage-lib.core/retry-failure @ret))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)
           v "hi"
