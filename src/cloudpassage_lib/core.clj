@@ -67,20 +67,21 @@
                    (md/catch
                     Exception
                     (fn [exc]
-                      (error "retry exception:" (.getMessage exc))
-                      ::error))))]
+                      (error "Failure retrying:" (.getMessage exc))
+                      ::local-retry-error))))]
     (md/loop []
       (md/chain
        (invoker)
        (fn [val]
          (cond
-           (not= ::error val) val
-
+           (not= ::local-retry-error val) val
            ;; stop trying
-           (and (= @tries stop) (= ::error val)) ::retry-failure
-
+           (and (= @tries stop) (= ::local-retry-error val))
+           (do
+             (error "Failed retrying" @tries "times; stopping")
+             ::retry-failure)
            ;; try again after the waiting period
-           (and (< @tries stop) (= ::error val))
+           (and (< @tries stop) (= ::local-retry-error val))
            (let [wait (mt/seconds (math/expt p @tries))]
              (mt/in wait md/recur))))))))
 
