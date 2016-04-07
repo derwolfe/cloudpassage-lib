@@ -1,6 +1,7 @@
 (ns cloudpassage-lib.core
   (:require
    [clojure.string :as str]
+   [clojure.math.numeric-tower :as math]
    [aleph.http :as http]
    [environ.core :refer [env]]
    [manifold.deferred :as md]
@@ -51,13 +52,37 @@
   `retry` expects to encounter exceptions when retrying `f`. As such,
   it will catch all exceptions that `f` might throw and continue retrying.
 
-  f - a function that should be retried; must return a `manifold.deferred/deferred'
+  f - a function that should be retried; must return a
+      `manifold.deferred/deferred'
   stop - an int representing the number of tries that the api should make before
          giving up and throwing an exception/dying.
 
   Returns a deferred wrapping the results of `f`."
-  [f stop]
-  nil)
+  [p f stop]
+  (let [tries (atom 0)
+        invoker (fn []
+                  (swap! tries inc)
+                  (->
+                   (f)
+                   (md/catch
+                    Exception
+                    (fn [exc]
+                      (error "retry exception:" (.getMessage exc))
+                      ::error))))]
+    (md/loop []
+      (md/chain
+       (invoker)
+       (fn [val]
+         (cond
+           (not= ::error val) val
+
+           ;; stop trying
+           (and (= @tries stop) (= ::error val)) ::retry-failure
+
+           ;; try again after the waiting period
+           (and (< @tries stop) (= ::error val))
+           (let [wait (mt/seconds (math/expt p @tries))]
+             (mt/in wait md/recur))))))))
 
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
