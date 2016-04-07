@@ -60,21 +60,21 @@
       (with-redefs [aleph.http/post fake-post
                     clj-time.core/now (fn [] sent-at)]
         (is (= response @(core/get-auth-token! "secret-key" "id"))))))
-  (testing "blows up on failure to get a token"
+  (testing "throws an exception on error"
     (let [sent-at (ct/now)
           msg "oh oh no - you are not allowed"
           fake-post (fn [_addr _opts]
                       (let [d (md/deferred)]
                         (md/error!
                          d
-                         (Exception. msg))
+                         (throw (Exception. msg)))
                         d))]
       (with-redefs [aleph.http/post fake-post
                     clj-time.core/now (fn [] sent-at)]
         (is (thrown-with-msg?
              Exception
              (re-pattern msg)
-             @(core/get-auth-token! "secret-key" "id")))))))
+             (core/get-auth-token! "secret-key" "id")))))))
 
 (deftest iso-date-tests
   (testing "it actually formats dates"
