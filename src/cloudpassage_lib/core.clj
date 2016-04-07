@@ -61,9 +61,7 @@
 
   Returns a deferred wrapping the results of `f`."
   [p f stop]
-  (let [tries (atom 0)
-        invoker (fn []
-                  (swap! tries inc)
+  (let [invoker (fn []
                   (->
                    (f)
                    (md/catch
@@ -71,21 +69,21 @@
                     (fn [exc]
                       (error "Failure retrying:" (.getMessage exc))
                       ::local-retry-error))))]
-    (md/loop []
+    (md/loop [tries 1]
       (md/chain
        (invoker)
        (fn [val]
          (cond
            (not= ::local-retry-error val) val
            ;; stop trying
-           (and (= @tries stop) (= ::local-retry-error val))
+           (and (= tries stop) (= ::local-retry-error val))
            (do
-             (error "Failed retrying" @tries "times; stopping")
+             (error "Failed retrying" tries "times; stopping")
              ::retry-failure)
            ;; try again, after the waiting period
-           (and (< @tries stop) (= ::local-retry-error val))
-           (let [wait (mt/seconds (math/expt p @tries))]
-             (mt/in wait md/recur))))))))
+           (and (< tries stop) (= ::local-retry-error val))
+           (let [wait (mt/seconds (math/expt p tries))]
+             (mt/in wait #(md/recur (inc tries))))))))))
 
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
