@@ -11,38 +11,36 @@
   (testing "retries until stop is reached"
     (let [c (mt/mock-clock)
           attempts (atom 0)
+          p 5
           f (fn []
               (swap! attempts inc)
               (let [d (md/deferred)]
-                (md/error! d (Exception. "I never work."))
+                (md/error! d (Exception. "inner explosion"))
                 d))
           stop 3]
       (mt/with-clock c
-        (let [ret (core/retry! f stop)]
+        (let [ret (core/retry! p f stop)]
           (is (= 1 @attempts))
 
-          (mt/advance c 501)
+          (mt/advance c (mt/seconds p))
           (is (= 2 @attempts))
 
-          (mt/advance c (* 100 (math/expt 5 2)))
+          (mt/advance c (mt/seconds (math/expt p 2)))
           (is (= 3 @attempts))
-
-          (is (thrown-with-msg?
-               Exception
-               #"Unable to fetch token after retrying")
-              @ret))))))
+          (is (= @ret :cloudpassage-lib.core/retry-failure))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)
           v "hi"
           stop 1
+          p 5
           f (fn []
               (let [d (md/deferred)]
                 (md/success! d v)
                 d))]
       (mt/with-clock c
-        (let [ret (core/retry! f stop)]
+        (let [ret (core/retry! p f stop)]
           (mt/advance c 1)
-          (is (= v @ret))))))
+          (is (= v @ret)))))))
 
 (deftest get-auth-token!-tests
   (testing "returns an authentication token"
