@@ -44,6 +44,21 @@
   [date]
   (f/unparse cp-date-formatter date))
 
+(defn retry!
+  "Takes a function that returns a deferred. Retries that function
+  until it succeeds or the number of failures equal the stop value
+
+  `retry` expects to encounter exceptions when retrying `f`. As such,
+  it will catch all exceptions that `f` might throw and continue retrying.
+
+  f - a function that should be retried; must return a `manifold.deferred/deferred'
+  stop - an int representing the number of tries that the api should make before
+         giving up and throwing an exception/dying.
+
+  Returns a deferred wrapping the results of `f`."
+  [f stop]
+  nil)
+
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
 

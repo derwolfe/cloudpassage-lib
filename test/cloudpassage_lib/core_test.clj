@@ -1,9 +1,48 @@
 (ns cloudpassage-lib.core-test
   (:require [clojure.test :refer :all]
             [manifold.deferred :as md]
+            [manifold.time :as mt]
             [clj-time.core :as ct]
             [cheshire.core :as json]
+            [clojure.math.numeric-tower :as math]
             [cloudpassage-lib.core :as core]))
+
+(deftest retry!-tests
+  (testing "retries until stop is reached"
+    (let [c (mt/mock-clock)
+          attempts (atom 0)
+          f (fn []
+              (swap! attempts inc)
+              (let [d (md/deferred)]
+                (md/error! d (Exception. "I never work."))
+                d))
+          stop 3]
+      (mt/with-clock c
+        (let [ret (core/retry! f stop)]
+          (is (= 1 @attempts))
+
+          (mt/advance c 501)
+          (is (= 2 @attempts))
+
+          (mt/advance c (* 100 (math/expt 5 2)))
+          (is (= 3 @attempts))
+
+          (is (thrown-with-msg?
+               Exception
+               #"Unable to fetch token after retrying")
+              @ret))))))
+  (testing "returns success deferred on completion"
+    (let [c (mt/mock-clock)
+          v "hi"
+          stop 1
+          f (fn []
+              (let [d (md/deferred)]
+                (md/success! d v)
+                d))]
+      (mt/with-clock c
+        (let [ret (core/retry! f stop)]
+          (mt/advance c 1)
+          (is (= v @ret))))))
 
 (deftest get-auth-token!-tests
   (testing "returns an authentication token"
