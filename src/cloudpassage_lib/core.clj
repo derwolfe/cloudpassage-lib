@@ -54,13 +54,12 @@
   [client-id client-key]
   (info "fetching new auth token for" client-id)
   (let [sent-at (time/now)
-        auth-header (->basic-auth-header client-id client-key)
-        token @(md/chain
-                (http/post auth-uri {:headers auth-header})
-                :body
-                bs/to-reader
-                #(json/parse-stream % true))]
-    token))
+        auth-header (->basic-auth-header client-id client-key)]
+    (md/chain
+     (http/post auth-uri {:headers auth-header})
+     :body
+     bs/to-reader
+     #(json/parse-stream % true))))
 
 (defn get-single-events-page!
   "get a page at `uri` using the provided `auth-token`.
@@ -100,7 +99,8 @@
       ;; a token is in redis
       (fernet/decrypt fernet-key token)
       ;; no token is present, fetch a new one
-      (let [new-token (get-auth-token! client-id client-secret)
+      ;; the operation to fetch the token should be asynchronous
+      (let [new-token @(get-auth-token! client-id client-secret)
             ;; this will cause the token to expire 100 seconds earlier than expiration
             ;; it is a simple fudge factor.
             {:keys [access_token expires_in]} new-token
