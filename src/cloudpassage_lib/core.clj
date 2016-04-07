@@ -52,6 +52,8 @@
   `retry` expects to encounter exceptions when retrying `f`. As such,
   it will catch all exceptions that `f` might throw and continue retrying.
 
+  p - an int representing the initial number of seconds to wait before retrying.
+      This will grow exponentially for each attempt.
   f - a function that should be retried; must return a
       `manifold.deferred/deferred'
   stop - an int representing the number of tries that the api should make before
