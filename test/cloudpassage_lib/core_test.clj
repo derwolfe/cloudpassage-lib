@@ -94,10 +94,10 @@
         (mt/with-clock c
           (let [result (core/get-auth-token! "secret-key" "id")]
             (is (= 1 @attempts))
-            (mt/advance c (mt/seconds 25))
+            (mt/advance c (mt/seconds 16))
 
             (is (= 2 @attempts))
-            (mt/advance c (mt/seconds 125))
+            (mt/advance c (mt/seconds 64))
 
             (is (= 3 @attempts))
             (is (= :cloudpassage-lib.core/auth-failure @result))))))))

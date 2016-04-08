@@ -96,7 +96,7 @@
   (info "fetching new auth token for" client-id)
   (let [sent-at (time/now)
         auth-header (->basic-auth-header client-id client-key)
-        starting-retry 5
+        starting-retry 4
         stop-after 3]
     (md/chain
      (retry
