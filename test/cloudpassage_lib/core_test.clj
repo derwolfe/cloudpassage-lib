@@ -23,7 +23,7 @@
           stop 3]
       (mt/with-clock c
         (let [log (use-atom-log-appender!)
-              ret (core/retry p f stop)]
+              ret (core/retry f p stop)]
           (is (= 1 @attempts))
           (is (str/includes? (first @log) (str "Failure retrying: " exc)))
 
@@ -49,7 +49,7 @@
                 (md/success! d v)
                 d))]
       (mt/with-clock c
-        (let [ret (core/retry p f stop)]
+        (let [ret (core/retry f p stop)]
           (mt/advance c 1)
           (is (= v @ret)))))))
 

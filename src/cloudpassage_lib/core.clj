@@ -52,15 +52,15 @@
   `retry` expects to encounter exceptions when retrying `f`. As such,
   it will catch all exceptions that `f` might throw and continue retrying.
 
-  p - an int representing the initial number of seconds to wait before retrying.
-      This will grow exponentially for each attempt.
   f - a function that should be retried; must return a
       `manifold.deferred/deferred'
+  p - an int representing the initial number of seconds to wait before retrying.
+      This will grow exponentially for each attempt.
   stop - an int representing the number of tries that the api should make before
          giving up and returning `:cloudpassage-lib.core/retry-failure`.
 
   Returns a deferred wrapping the results of `f`."
-  [p f stop]
+  [f p stop]
   (let [invoker (fn []
                   (->
                    (f)
