@@ -95,12 +95,19 @@
   [client-id client-key]
   (info "fetching new auth token for" client-id)
   (let [sent-at (time/now)
-        auth-header (->basic-auth-header client-id client-key)]
+        auth-header (->basic-auth-header client-id client-key)
+        starting-retry 5
+        stop-after 5]
     (md/chain
-     (http/post auth-uri {:headers auth-header})
-     :body
-     bs/to-reader
-     #(json/parse-stream % true))))
+     (retry
+      #(http/post auth-uri {:headers auth-header})
+      starting-retry
+      stop-after)
+     (fn [val]
+       (if (= ::retry-failure val)
+         ::auth-failure
+         (json/parse-stream (bs/to-reader (:body val)) true))))))
+
 
 (defn get-single-events-page!
   "get a page at `uri` using the provided `auth-token`.
