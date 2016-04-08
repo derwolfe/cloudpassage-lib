@@ -97,7 +97,7 @@
   (let [sent-at (time/now)
         auth-header (->basic-auth-header client-id client-key)
         starting-retry 5
-        stop-after 5]
+        stop-after 3]
     (md/chain
      (retry
       #(http/post auth-uri {:headers auth-header})
