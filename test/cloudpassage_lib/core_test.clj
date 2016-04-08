@@ -73,9 +73,9 @@
     (let [sent-at (ct/now)
           ;; this should fail the retry
           fake-retry (fn [_f _p _stop]
-                      (let [d (md/deferred)]
-                        (md/success! d :cloudpassage-lib.core/retry-failure)
-                        d))]
+                       (let [d (md/deferred)]
+                         (md/success! d :cloudpassage-lib.core/retry-failure)
+                         d))]
       (with-redefs [cloudpassage-lib.core/retry fake-retry
                     clj-time.core/now (fn [] sent-at)]
         (is (= :cloudpassage-lib.core/auth-failure

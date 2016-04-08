@@ -108,7 +108,6 @@
          ::auth-failure
          (json/parse-stream (bs/to-reader (:body val)) true))))))
 
-
 (defn get-single-events-page!
   "get a page at `uri` using the provided `auth-token`.
 
