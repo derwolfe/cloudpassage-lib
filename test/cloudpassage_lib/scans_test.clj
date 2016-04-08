@@ -2,6 +2,7 @@
   (:require
    [cloudpassage-lib.scans :as scans]
    [cloudpassage-lib.core :as cpc :refer [cp-date-formatter]]
+   [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
    [clj-time.format :as tf]
    [clj-time.core :as t :refer [millis hours ago within?]]
    [clojure.string :as str]
@@ -11,23 +12,6 @@
    [manifold.time :as mt]
    [cemerick.url :as u]
    [taoensso.timbre :as timbre :refer [info spy]]))
-
-(defn ^:private use-atom-log-appender!
-  []
-  (let [log (atom [])
-        log-appender-fn (fn [data]
-                          (let [{:keys [output-fn]} data
-                                formatted-output-str (output-fn data)]
-                            (swap! log conj formatted-output-str)))]
-    (timbre/merge-config!
-     {:appenders
-      {:atom-appender
-       {:async false
-        :enabled? true
-        :min-level nil
-        :output-fn :inherit
-        :fn log-appender-fn}}})
-    log))
 
 (deftest scans-url-tests
   (are [opts expected] (= expected (#'scans/scans-url opts))
