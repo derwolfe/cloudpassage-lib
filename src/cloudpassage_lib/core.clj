@@ -94,7 +94,8 @@
   client-key - a string representing the key provided by cloudpassage.
   client-id - a string representing an customer.
 
-  returns a new auth token hashmap"
+  returns a `manifold.deferred/deferred' wrapping an authentication
+  token hashmap"
   [client-id client-key]
   (info "fetching new auth token for" client-id)
   (let [sent-at (time/now)
