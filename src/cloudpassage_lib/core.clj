@@ -75,11 +75,14 @@
        (fn [val]
          (cond
            (not= ::local-retry-error val) val
+
            ;; stop trying
            (and (= tries stop) (= ::local-retry-error val))
-           (do
+           (let [d (md/deferred)]
              (error "Failed retrying" tries "times; stopping")
-             ::retry-failure)
+             (md/error! d (Exception. "Failed retrying"))
+             d)
+
            ;; try again, after the waiting period
            (and (< tries stop) (= ::local-retry-error val))
            (let [wait (mt/seconds (math/expt p tries))]
