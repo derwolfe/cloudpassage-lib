@@ -86,11 +86,11 @@
         (mt/with-clock c
           (let [result (core/get-auth-token! "secret-key" "id")]
             (is (= 1 @attempts))
+
             (mt/advance c (mt/seconds 16))
-
             (is (= 2 @attempts))
-            (mt/advance c (mt/seconds 64))
 
+            (mt/advance c (mt/seconds 64))
             (is (= 3 @attempts))
             (is (thrown-with-msg?
                  Exception
