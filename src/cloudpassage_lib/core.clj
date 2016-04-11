@@ -106,10 +106,7 @@
       #(http/post auth-uri {:headers auth-header})
       starting-retry
       stop-after)
-     (fn [val]
-       (if (= ::retry-failure val)
-         ::auth-failure
-         (json/parse-stream (bs/to-reader (:body val)) true))))))
+     #(json/parse-stream (bs/to-reader (:body %)) true))))
 
 (defn get-single-events-page!
   "get a page at `uri` using the provided `auth-token`.
