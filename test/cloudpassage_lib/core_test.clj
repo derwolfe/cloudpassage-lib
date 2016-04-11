@@ -10,7 +10,7 @@
             [cloudpassage-lib.core :as core]))
 
 (deftest retry-tests
-  (testing "retries until stop is reached"
+  (testing "retries until stop is reached and returns error deferred"
     (let [c (mt/mock-clock)
           attempts (atom 0)
           p 5
@@ -38,7 +38,10 @@
           (is (str/includes?
                (last @log)
                "Failed retrying 3 times; stopping"))
-          (is (= :cloudpassage-lib.core/retry-failure @ret))))))
+          (is (thrown-with-msg?
+               Exception
+               #"Failed retrying"
+               @ret))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)
           v "hi"
@@ -61,46 +64,14 @@
                     :expires_in 900
                     :token_type "bearer"}
           fake-post (fn [_addr _opts]
-                      (let [foo (md/deferred)]
-                        (md/success!
-                         foo
-                         {:body (json/generate-string response)})
-                        foo))]
-      (with-redefs [aleph.http/post fake-post
-                    clj-time.core/now (fn [] sent-at)]
-        (is (= response @(core/get-auth-token! "secret-key" "id"))))))
-  (testing "returns an :cloudpassage-lib.core/auth-failure when retrying fails"
-    (let [sent-at (ct/now)
-          ;; this should fail the retry
-          fake-retry (fn [_f _p _stop]
-                       (let [d (md/deferred)]
-                         (md/success! d :cloudpassage-lib.core/retry-failure)
-                         d))]
-      (with-redefs [cloudpassage-lib.core/retry fake-retry
-                    clj-time.core/now (fn [] sent-at)]
-        (is (= :cloudpassage-lib.core/auth-failure
-               @(core/get-auth-token! "secret-key" "id"))))))
-  (testing "retries and returns :cloudpassage-lib.core/auth-failure when all retries fail"
-    (let [sent-at (ct/now)
-          attempts (atom 0)
-          fake-post (fn [_addr _opts]
-                      (swap! attempts inc)
                       (let [d (md/deferred)]
-                        (md/error! d (Exception. "401"))
-                        d))
-          c (mt/mock-clock)]
+                        (md/success!
+                         d
+                         {:body (json/generate-string response)})
+                        d))]
       (with-redefs [aleph.http/post fake-post
                     clj-time.core/now (fn [] sent-at)]
-        (mt/with-clock c
-          (let [result (core/get-auth-token! "secret-key" "id")]
-            (is (= 1 @attempts))
-            (mt/advance c (mt/seconds 16))
-
-            (is (= 2 @attempts))
-            (mt/advance c (mt/seconds 64))
-
-            (is (= 3 @attempts))
-            (is (= :cloudpassage-lib.core/auth-failure @result))))))))
+        (is (= response @(core/get-auth-token! "secret-key" "id")))))))
 
 (deftest iso-date-tests
   (testing "it actually formats dates"
