@@ -95,7 +95,7 @@
   client-id - a string representing an customer.
 
   returns a `manifold.deferred/deferred' wrapping an authentication
-  token hashmap"
+  token hash map"
   [client-id client-key]
   (info "fetching new auth token for" client-id)
   (let [sent-at (time/now)

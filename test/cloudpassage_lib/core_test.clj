@@ -13,7 +13,7 @@
   (testing "retries until stop is reached and returns error deferred"
     (let [c (mt/mock-clock)
           attempts (atom 0)
-          p 5
+          p 4
           exc "inner explosion"
           f (fn []
               (swap! attempts inc)
@@ -31,10 +31,9 @@
           (is (= 2 @attempts))
           (is (str/includes? (second @log) (str "Failure retrying: " exc)))
 
-          (mt/advance c (mt/seconds (math/expt p 2)))
+          (mt/advance c (mt/seconds (* p p)))
           (is (= 3 @attempts))
           (is (str/includes? (second (rest @log)) (str "Failure retrying: " exc)))
-
           (is (str/includes?
                (last @log)
                "Failed retrying 3 times; stopping"))
@@ -87,10 +86,10 @@
           (let [result (core/get-auth-token! "secret-key" "id")]
             (is (= 1 @attempts))
 
-            (mt/advance c (mt/seconds 16))
+            (mt/advance c (mt/seconds 4))
             (is (= 2 @attempts))
 
-            (mt/advance c (mt/seconds 64))
+            (mt/advance c (mt/seconds 16))
             (is (= 3 @attempts))
             (is (thrown-with-msg?
                  Exception
