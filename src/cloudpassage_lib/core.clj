@@ -65,17 +65,16 @@
                     (let [wait (mt/seconds (math/expt p tries))]
                       (mt/in wait #(md/recur (inc tries)))))]
     (md/loop [tries 1]
-      (md/chain
-       (md/catch
-        (f)
-        Exception
-         (fn [exc]
-           (error "Failure retrying:" (.getMessage exc))
-           (if (= tries stop)
-             (do
-               (error "Failed retrying" tries "times; stopping")
-               (throw (Exception. "Failed retrying; stopping.")))
-             (try-again tries))))))))
+      (md/catch
+       (f)
+       Exception
+        (fn [exc]
+          (error "Failure retrying:" (.getMessage exc))
+          (if (= tries stop)
+            (do
+              (error "Failed retrying" tries "times; stopping")
+              (throw (Exception. "Failed retrying; stopping.")))
+            (try-again tries)))))))
 
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
