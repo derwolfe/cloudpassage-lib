@@ -150,7 +150,6 @@
       ;; a token is in redis
       (fernet/decrypt fernet-key token)
       ;; no token is present, fetch a new one
-      ;; the operation to fetch the token should be asynchronous
       (let [new-token @(get-auth-token! client-id client-secret)
             ;; this will cause the token to expire 100 seconds earlier than expiration
             ;; it is a simple fudge factor.
