@@ -61,9 +61,9 @@
 
   Returns a deferred wrapping the results of `f`."
   [f p stop]
-  (let [recur-in (fn [tries]
-                   (let [wait (mt/seconds (math/expt p tries))]
-                     (mt/in wait #(md/recur (inc tries)))))]
+  (let [try-again (fn [tries]
+                    (let [wait (mt/seconds (math/expt p tries))]
+                      (mt/in wait #(md/recur (inc tries)))))]
     (md/loop [tries 1]
       (md/chain
        (md/catch
@@ -71,22 +71,11 @@
         Exception
          (fn [exc]
            (error "Failure retrying:" (.getMessage exc))
-           exc))
-       (fn [val]
-         (let [errval? (instance? Exception val)]
-           (cond
-             ;; stop trying
-             (and (= tries stop) errval?)
+           (if (= tries stop)
              (do
                (error "Failed retrying" tries "times; stopping")
                (throw (Exception. "Failed retrying; stopping.")))
-
-             ;; return the value, don't retry
-             (not errval?) val
-
-             ;; keep retrying
-             (and (< tries stop) errval?)
-             (recur-in tries))))))))
+             (try-again tries))))))))
 
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
