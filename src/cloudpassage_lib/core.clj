@@ -61,28 +61,34 @@
 
   Returns a deferred wrapping the results of `f`."
   [f p stop]
-  (md/loop [tries 1]
-    (md/chain
-     (-> (f)
-         (md/catch Exception identity))
+  (let [invoker (fn []
+                  (->
+                   (f)
+                   (md/catch
+                       Exception
+                       (fn [exc]
+                         (error "Failure retrying:" (.getMessage exc))
+                         exc))))]
+    (md/loop [tries 1]
+      (md/chain
+       (invoker)
+       (fn [val]
+         (let [errval? (instance? Exception val)]
+           (cond
+             ;; stop trying
+             (and (= tries stop) errval?)
+             (do
+               (error "Failed retrying" tries "times; stopping")
+               (Exception. "Failed retrying; stopping."))
 
-      ;; (md/catch
-      ;;  Exception
-      ;;  (fn [exc]
-      ;;    (let [d (md/deferred)]
-      ;;      (error "Failure retrying:" (.getMessage exc))
-      ;;      (md/error! d exc)
-      ;;      d)))
-      )
-     (fn [val]
-       (if (= tries stop)
-         (let [d (md/deferred)]
-           (error "Failed retrying" tries "times; stopping")
-           (md/error! d (Exception. "Failed retrying"))
-           d)
-         (let [wait (mt/seconds (math/expt p tries))]
-           (mt/in wait #(md/recur (inc tries))))))))
-;;)
+             ;; return the value, don't retry
+             (not errval?) val
+
+             ;; keep retrying
+             (and (< tries stop) errval?)
+             (let [wait (mt/seconds (math/expt p tries))]
+               (mt/in wait #(md/recur (inc tries)))))))))))
+
 
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
