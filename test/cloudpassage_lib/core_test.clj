@@ -37,7 +37,10 @@
           (is (str/includes?
                (last @log)
                "Failed retrying 3 times; stopping"))
-          (is (instance? Exception @ret))))))
+          (is (thrown-with-msg?
+               Exception
+               #"Failed retrying; stopping"
+               @ret))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)
           v "hi"
@@ -88,8 +91,9 @@
 
             (mt/advance c (mt/seconds 16))
             (is (= 3 @attempts))
-            (is (instance?
+            (is (thrown-with-msg?
                  Exception
+                 #"Failed retrying; stopping"
                  @result)))))))
   )
 

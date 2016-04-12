@@ -79,7 +79,7 @@
              (and (= tries stop) errval?)
              (do
                (error "Failed retrying" tries "times; stopping")
-               (Exception. "Failed retrying; stopping."))
+               (throw (Exception. "Failed retrying; stopping.")))
 
              ;; return the value, don't retry
              (not errval?) val
