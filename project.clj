@@ -6,7 +6,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [com.taoensso/timbre "4.2.0"]
-                 [manifold "0.1.2"]
+                 [manifold "0.1.4"]
                  [aleph "0.4.1-beta2"]
                  [clj-time "0.11.0"]
                  [base64-clj "0.1.1"]

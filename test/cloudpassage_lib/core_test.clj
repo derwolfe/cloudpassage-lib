@@ -33,13 +33,16 @@
 
           (mt/advance c (mt/seconds (* p p)))
           (is (= 3 @attempts))
-          (is (str/includes? (second (rest @log)) (str "Failure retrying: " exc)))
+          (is (str/includes?
+               (second (rest @log))
+               (str "Failure retrying: " exc)))
+
           (is (str/includes?
                (last @log)
                "Failed retrying 3 times; stopping"))
           (is (thrown-with-msg?
                Exception
-               #"Failed retrying"
+               #"Failed retrying; stopping"
                @ret))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)
@@ -93,7 +96,7 @@
             (is (= 3 @attempts))
             (is (thrown-with-msg?
                  Exception
-                 #"Failed retry"
+                 #"Failed retrying; stopping"
                  @result))))))))
 
 (deftest iso-date-tests
