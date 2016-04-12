@@ -61,20 +61,17 @@
 
   Returns a deferred wrapping the results of `f`."
   [f p stop]
-  (let [invoker (fn []
-                  (->
-                   (f)
-                   (md/catch
-                    Exception
-                    (fn [exc]
-                      (error "Failure retrying:" (.getMessage exc))
-                      exc))))
-        recur-in (fn [tries]
+  (let [recur-in (fn [tries]
                    (let [wait (mt/seconds (math/expt p tries))]
                      (mt/in wait #(md/recur (inc tries)))))]
     (md/loop [tries 1]
       (md/chain
-       (invoker)
+       (md/catch
+        (f)
+        Exception
+         (fn [exc]
+           (error "Failure retrying:" (.getMessage exc))
+           exc))
        (fn [val]
          (let [errval? (instance? Exception val)]
            (cond
