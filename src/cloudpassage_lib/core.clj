@@ -73,16 +73,8 @@
 
   Returns a deferred wrapping the results of `f`."
   [f p stop]
-  (let [;; try-after is essentially the back-off strategy
-        ;; it does not handle retrying itself, but is responsible
-        ;; for determining whether to continue retrying and
-        ;; if so, how long to wait until the next retry.
-        try-after (fn [exceptions]
-                    (let [ct (count exceptions)
-                          next-wait (math/expt p ct)]
-                      (if (< ct stop)
-                        next-wait
-                        (throw (last exceptions)))))]
+  (let [try-after (->> (exponentially p)
+                       (up-to stop))]
     (md/loop [failures []]
       (md/catch
        (f)
