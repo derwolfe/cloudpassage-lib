@@ -20,22 +20,17 @@
               (let [d (md/deferred)]
                 (md/error! d (Exception. exc))
                 d))
-          log-contains? (fn [log-msg text]
-                          (str/includes? log-msg text))
           stop 3]
       (mt/with-clock c
         (let [log (use-atom-log-appender!)
               ret (core/retry f p stop)]
           (is (= 1 @attempts))
-          (is (log-contains? (first @log) exc))
 
           (mt/advance c (mt/seconds p))
           (is (= 2 @attempts))
-          (is (log-contains? (second @log) exc))
 
           (mt/advance c (mt/seconds (* p p)))
           (is (= 3 @attempts))
-          (is (log-contains? (second (rest @log)) exc))
           (is (thrown-with-msg? Exception #"explosion" @ret))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)

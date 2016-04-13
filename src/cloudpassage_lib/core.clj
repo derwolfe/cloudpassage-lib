@@ -61,16 +61,24 @@
 
   Returns a deferred wrapping the results of `f`."
   [f p stop]
-  (md/loop [tries 1]
-    (md/catch
-     (f)
-     Exception
-      (fn [exc]
-        (error "Failure retrying:" exc)
-        (if (= tries stop)
-          (throw exc))
-        (let [wait (mt/seconds (math/expt p tries))]
-          (mt/in wait #(md/recur (inc tries))))))))
+  (let [;; try-after is essentially the back-off strategy
+        ;; it does not handle retrying itself, but is responsible
+        ;; for determining whether to continue retrying and
+        ;; if so, how long to wait until the next retry.
+        try-after (fn [exceptions]
+                    (let [ct (count exceptions)
+                          next-wait (math/expt p ct)]
+                      (if (< ct stop)
+                        next-wait
+                        (throw (last exceptions)))))]
+    (md/loop [failures []]
+      (md/catch
+       (f)
+       Exception
+        (fn [exc]
+          (let [all-failures (conj failures exc)
+                wait (try-after all-failures)]
+            (mt/in (mt/seconds wait) #(md/recur all-failures))))))))
 
 (defn get-auth-token!
   "Using the secret key and an ID, fetch a new auth token.
