@@ -18,7 +18,7 @@
   "Returns a function that when evaluated will either
 
   1) return a number to use to wait until retrying a function again. Or,
-  2) throw an exception because the maximum number of retries, `stop` has
+  2) throw an exception because the maximum number of retries, `stop`, has
   been reached.
 
   This is intended to be used in conjunction with other 1-arg combinators,

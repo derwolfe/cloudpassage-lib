@@ -14,7 +14,7 @@
       (is (= 1000 (f [:a :b :c]))))))
 
 (deftest up-to-tests
-  (testing "raises when number of tries exceeded "
+  (testing "raises most recent exception when number of tries exceeded"
     (let [tries [(Exception. "earlier")
                  (Exception. "recent")]
           stop 2
