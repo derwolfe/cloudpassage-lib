@@ -4,72 +4,8 @@
             [manifold.time :as mt]
             [clj-time.core :as ct]
             [cheshire.core :as json]
-            [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
-            [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
             [cloudpassage-lib.core :as core]))
-
-(deftest exponentially-tests
-  (testing "returns a function that will raise the wait period to the number of failures"
-    (let [f (core/exponentially 10)]
-      (is (= 1 (f [])))
-      (is (= 10 (f [:a])))
-      (is (= 1000 (f [:a :b :c]))))))
-
-(deftest up-to-tests
-  (testing "raises when number of tries exceeded "
-    (let [tries [(Exception. "earlier")
-                 (Exception. "recent")]
-          stop 2
-          retry? #(throw (Exception. "I shouldn't have been called"))
-          f (core/up-to stop retry?)]
-      (is (thrown-with-msg?
-           Exception
-           #"recent"
-           (f tries)))))
-  (testing "returns the result of retry when number of tries less than max"
-    (let [tries []
-          retry? (constantly :success)
-          stop 2
-          f (core/up-to stop retry?)]
-      (is (= :success (f tries))))))
-
-(deftest retry-tests
-  (testing "retries until stop is reached and re-throws last exception"
-    (let [c (mt/mock-clock)
-          attempts (atom 0)
-          p 4
-          exc "explosion"
-          f (fn []
-              (swap! attempts inc)
-              (let [d (md/deferred)]
-                (md/error! d (Exception. exc))
-                d))
-          stop 3]
-      (mt/with-clock c
-        (let [log (use-atom-log-appender!)
-              ret (core/retry f p stop)]
-          (is (= 1 @attempts))
-
-          (mt/advance c (mt/seconds p))
-          (is (= 2 @attempts))
-
-          (mt/advance c (mt/seconds (* p p)))
-          (is (= 3 @attempts))
-          (is (thrown-with-msg? Exception #"explosion" @ret))))))
-  (testing "returns success deferred on completion"
-    (let [c (mt/mock-clock)
-          v "hi"
-          stop 1
-          p 5
-          f (fn []
-              (let [d (md/deferred)]
-                (md/success! d v)
-                d))]
-      (mt/with-clock c
-        (let [ret (core/retry f p stop)]
-          (mt/advance c 1)
-          (is (= v @ret)))))))
 
 (deftest get-auth-token!-tests
   (testing "returns an authentication token"
@@ -87,7 +23,7 @@
       (with-redefs [aleph.http/post fake-post
                     clj-time.core/now (fn [] sent-at)]
         (is (= response @(core/get-auth-token! "secret-key" "id"))))))
-  (testing "retries getting the token and fails with a retry exception"
+  (testing "retries getting the token and fails with the last exception"
     (let [sent-at (ct/now)
           attempts (atom 0)
           fake-post (fn [_addr _opts]
