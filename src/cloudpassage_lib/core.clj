@@ -45,6 +45,18 @@
   [date]
   (f/unparse cp-date-formatter date))
 
+(defn exponentially
+  [wait]
+  (fn [failures]
+    (math/expt wait (count failures))))
+
+(defn up-to
+  [stop retry?]
+  (fn [failures]
+    (if (< (count failures) stop)
+      (retry? failures)
+      (throw (last failures)))))
+
 (defn retry
   "Takes a function that returns a `manifold.deferred/deferred`. Retries that
   function until it succeeds or the number of failures equal the stop value.
