@@ -9,6 +9,31 @@
             [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
             [cloudpassage-lib.core :as core]))
 
+(deftest exponentially-tests
+  (testing "returns a function that will raise the wait period to the number of failures"
+    (let [f (core/exponentially 10)]
+      (is (= 1 (f [])))
+      (is (= 10 (f [:a])))
+      (is (= 1000 (f [:a :b :c]))))))
+
+(deftest up-to-tests
+  (testing "raises when number of tries exceeded "
+    (let [tries [(Exception. "earlier")
+                 (Exception. "recent")]
+          stop 2
+          retry? #(throw (Exception. "I shouldn't have been called"))
+          f (core/up-to stop retry?)]
+      (is (thrown-with-msg?
+           Exception
+           #"recent"
+           (f tries)))))
+  (testing "returns the result of retry when number of tries less than max"
+    (let [tries []
+          retry? (constantly :success)
+          stop 2
+          f (core/up-to stop retry?)]
+      (is (= :success (f tries))))))
+
 (deftest retry-tests
   (testing "retries until stop is reached and re-throws last exception"
     (let [c (mt/mock-clock)
