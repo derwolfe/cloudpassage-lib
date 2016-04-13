@@ -46,11 +46,24 @@
   (f/unparse cp-date-formatter date))
 
 (defn exponentially
+  "Returns a function that when evaluated will produce the initial wait
+  raised to the number of failures.
+
+  This is intended to be used in conjunction with other 2-arg combinators,
+  e.g., `up-to`."
   [wait]
   (fn [failures]
     (math/expt wait (count failures))))
 
 (defn up-to
+  "Returns a function that when evaluated will either
+
+  1) return a number to use to wait until retrying a function again. Or,
+  2) throw an exception because the maximum number of retries, `stop` has
+  been reached.
+
+  This is intended to be used in conjunction with other 2-arg combinators,
+  e.g., `up-to`."
   [stop retry?]
   (fn [failures]
     (if (< (count failures) stop)
