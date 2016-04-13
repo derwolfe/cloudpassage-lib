@@ -10,40 +10,33 @@
             [cloudpassage-lib.core :as core]))
 
 (deftest retry-tests
-  (testing "retries until stop is reached and returns error deferred"
+  (testing "retries until stop is reached and re-throws last exception"
     (let [c (mt/mock-clock)
           attempts (atom 0)
           p 4
-          exc "inner explosion"
+          exc "explosion"
           f (fn []
               (swap! attempts inc)
               (let [d (md/deferred)]
                 (md/error! d (Exception. exc))
                 d))
+          log-contains? (fn [log-msg text]
+                          (str/includes? log-msg text))
           stop 3]
       (mt/with-clock c
         (let [log (use-atom-log-appender!)
               ret (core/retry f p stop)]
           (is (= 1 @attempts))
-          (is (str/includes? (first @log) (str "Failure retrying: " exc)))
+          (is (log-contains? (first @log) exc))
 
           (mt/advance c (mt/seconds p))
           (is (= 2 @attempts))
-          (is (str/includes? (second @log) (str "Failure retrying: " exc)))
+          (is (log-contains? (second @log) exc))
 
           (mt/advance c (mt/seconds (* p p)))
           (is (= 3 @attempts))
-          (is (str/includes?
-               (second (rest @log))
-               (str "Failure retrying: " exc)))
-
-          (is (str/includes?
-               (last @log)
-               "Failed retrying 3 times; stopping"))
-          (is (thrown-with-msg?
-               Exception
-               #"Failed retrying; stopping"
-               @ret))))))
+          (is (log-contains? (second (rest @log)) exc))
+          (is (thrown-with-msg? Exception #"explosion" @ret))))))
   (testing "returns success deferred on completion"
     (let [c (mt/mock-clock)
           v "hi"
@@ -94,10 +87,7 @@
 
             (mt/advance c (mt/seconds 16))
             (is (= 3 @attempts))
-            (is (thrown-with-msg?
-                 Exception
-                 #"Failed retrying; stopping"
-                 @result))))))))
+            (is (thrown-with-msg? Exception #"401" @result))))))))
 
 (deftest iso-date-tests
   (testing "it actually formats dates"
