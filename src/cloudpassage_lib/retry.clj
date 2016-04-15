@@ -4,7 +4,7 @@
    [manifold.deferred :as md]
    [manifold.time :as mt]))
 
-(defn exponentially
+(defn ^:private exponentially
   "Returns a function that when evaluated will produce the initial wait
   raised to the number of failures.
 
@@ -14,7 +14,7 @@
   (fn [failures]
     (math/expt wait (count failures))))
 
-(defn up-to
+(defn ^:private up-to
   "Returns a function that when evaluated will either
 
   1) return a number to use to wait until retrying a function again. Or,
@@ -28,6 +28,27 @@
     (if (< (count failures) stop)
       (retry? failures)
       (throw (last failures)))))
+
+(defn ^:private retry
+  "Retry a function multiple times, pausing for a number of seconds between
+  each try.
+
+  f - a function that should be retried; must return a
+      `manifold.deferred/deferred'
+  strategy - a function that will produce a number and takes a vector of
+      exceptions. The number of exceptions is used to record the number
+      of attempts.
+
+  Returns a deferred wrapping the results of `f`."
+  [f strategy]
+  (md/loop [failures []]
+    (md/catch
+     (f)
+     Exception
+      (fn [exc]
+        (let [all-failures (conj failures exc)
+              wait (strategy all-failures)]
+          (mt/in (mt/seconds wait) #(md/recur all-failures)))))))
 
 (defn retry-exp-backoff
   "Takes a function that returns a `manifold.deferred/deferred`. Retries that
@@ -45,13 +66,5 @@
 
   Returns a deferred wrapping the results of `f`."
   [f p stop]
-  (let [try-after (->> (exponentially p)
-                       (up-to stop))]
-    (md/loop [failures []]
-      (md/catch
-       (f)
-       Exception
-        (fn [exc]
-          (let [all-failures (conj failures exc)
-                wait (try-after all-failures)]
-            (mt/in (mt/seconds wait) #(md/recur all-failures))))))))
+  (retry f (->> (exponentially p)
+                (up-to stop))))
