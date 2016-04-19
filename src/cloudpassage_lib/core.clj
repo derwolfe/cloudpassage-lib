@@ -12,6 +12,7 @@
    [clj-time.core :as time]
    [clj-time.format :as f]
    [cloudpassage-lib.fernet :as fernet]
+   [cloudpassage-lib.retry :as retry]
    [cheshire.core :as json]))
 
 ;; the url from which new auth-tokens can be obtained.
@@ -50,16 +51,20 @@
   client-key - a string representing the key provided by cloudpassage.
   client-id - a string representing an customer.
 
-  returns a new auth token hashmap"
+  returns a `manifold.deferred/deferred' wrapping an authentication
+  token hash map"
   [client-id client-key]
   (info "fetching new auth token for" client-id)
   (let [sent-at (time/now)
-        auth-header (->basic-auth-header client-id client-key)]
+        auth-header (->basic-auth-header client-id client-key)
+        starting-retry 4
+        stop-after 3]
     (md/chain
-     (http/post auth-uri {:headers auth-header})
-     :body
-     bs/to-reader
-     #(json/parse-stream % true))))
+     (retry/retry-exp-backoff
+      #(http/post auth-uri {:headers auth-header})
+      starting-retry
+      stop-after)
+     #(json/parse-stream (bs/to-reader (:body %)) true))))
 
 (defn get-single-events-page!
   "get a page at `uri` using the provided `auth-token`.
@@ -99,7 +104,6 @@
       ;; a token is in redis
       (fernet/decrypt fernet-key token)
       ;; no token is present, fetch a new one
-      ;; the operation to fetch the token should be asynchronous
       (let [new-token @(get-auth-token! client-id client-secret)
             ;; this will cause the token to expire 100 seconds earlier than expiration
             ;; it is a simple fudge factor.

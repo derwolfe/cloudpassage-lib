@@ -1,8 +1,10 @@
 (ns cloudpassage-lib.core-test
   (:require [clojure.test :refer :all]
             [manifold.deferred :as md]
+            [manifold.time :as mt]
             [clj-time.core :as ct]
             [cheshire.core :as json]
+            [clojure.string :as str]
             [cloudpassage-lib.core :as core]))
 
 (deftest get-auth-token!-tests
@@ -13,29 +15,29 @@
                     :expires_in 900
                     :token_type "bearer"}
           fake-post (fn [_addr _opts]
-                      (let [foo (md/deferred)]
-                        (md/success!
-                         foo
-                         {:body (json/generate-string response)})
-                        foo))]
+                      (md/success-deferred {:body (json/generate-string response)}))]
       (with-redefs [aleph.http/post fake-post
                     clj-time.core/now (fn [] sent-at)]
         (is (= response @(core/get-auth-token! "secret-key" "id"))))))
-  (testing "blows up on failure to get a token"
+  (testing "retries getting the token and fails with the last exception"
     (let [sent-at (ct/now)
-          msg "oh oh no - you are not allowed"
+          attempts (atom 0)
           fake-post (fn [_addr _opts]
-                      (let [d (md/deferred)]
-                        (md/error!
-                         d
-                         (Exception. msg))
-                        d))]
+                      (swap! attempts inc)
+                      (md/error-deferred (Exception. "401")))
+          c (mt/mock-clock)]
       (with-redefs [aleph.http/post fake-post
                     clj-time.core/now (fn [] sent-at)]
-        (is (thrown-with-msg?
-             Exception
-             (re-pattern msg)
-             @(core/get-auth-token! "secret-key" "id")))))))
+        (mt/with-clock c
+          (let [result (core/get-auth-token! "secret-key" "id")]
+            (is (= 1 @attempts))
+
+            (mt/advance c (mt/seconds 4))
+            (is (= 2 @attempts))
+
+            (mt/advance c (mt/seconds 16))
+            (is (= 3 @attempts))
+            (is (thrown-with-msg? Exception #"401" @result))))))))
 
 (deftest iso-date-tests
   (testing "it actually formats dates"
@@ -46,17 +48,13 @@
 (deftest get-single-events-page!-tests
   (testing "returns ::fetch-error on exception"
     (let [fake-get (fn [_addr _headers]
-                     (let [d (md/deferred)]
-                       (md/error! d (Exception. "kaboom"))
-                       d))]
+                     (md/error-deferred (Exception. "kaboom")))]
       (with-redefs [aleph.http/get fake-get]
         (is (= :cloudpassage-lib.core/fetch-error
                @(core/get-single-events-page! "" ""))))))
   (testing "returns deserialized json body"
     (let [fake-get (fn [_addr _headers]
-                     (let [d (md/deferred)]
-                       (md/success! d {:body (json/generate-string {:events []})})
-                       d))]
+                     (md/success-deferred {:body (json/generate-string {:events []})}))]
       (with-redefs [aleph.http/get fake-get]
         (is (= {:events []}
                @(core/get-single-events-page! "" "")))))))
