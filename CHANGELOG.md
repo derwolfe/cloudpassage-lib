@@ -1,3 +1,15 @@
+# 0.2.3
+
+- Add exponential backoff retry logic to the library (#53) and use that
+  logic when authenticating (#54)
+- Bump the version of manifold to 1.4 (#52)
+- Return a `manifold.deferred/deferred` from `get-auth-token!` instead of a
+  fully realized value (#51)
+- Extract `use-atom-log-appender!` from `scans-test` and place it inside of
+  a new `test-utils` namespace (#47)
+- Parse streamed json responses instead of realizing byte-streams as strings in
+  `core.clj` (#46)
+
 # 0.2.2
 
 - Add retry logic on HTTP errors (#41)
