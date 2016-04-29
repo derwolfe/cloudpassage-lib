@@ -1,3 +1,7 @@
+# 0.2.4
+
+- Improve log level granularity (#56)
+
 # 0.2.3
 
 - Add exponential backoff retry logic to the library (#53) and use that
