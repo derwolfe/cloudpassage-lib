@@ -7,7 +7,7 @@
    [manifold.time :as mt]
    [byte-streams :as bs]
    [taoensso.carmine :as car :refer (wcar)]
-   [taoensso.timbre :as timbre :refer [info error]]
+   [taoensso.timbre :as timbre :refer [info warn]]
    [base64-clj.core :as base64]
    [clj-time.core :as time]
    [clj-time.format :as f]
@@ -83,7 +83,7 @@
      (md/catch
       Exception
       (fn [exc]
-        (error "error fetching events page:" (.getMessage exc))
+        (warn "error fetching events page:" (.getMessage exc))
         ::fetch-error)))))
 
 (defn page-response-ok?
