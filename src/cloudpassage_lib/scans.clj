@@ -10,7 +10,7 @@
    [manifold.time :as mt]
    [environ.core :refer [env]]
    [cloudpassage-lib.core :as cpc]
-   [taoensso.timbre :as timbre :refer [error info spy]]
+   [taoensso.timbre :as timbre :refer [warn error info]]
    [clj-time.core :as t :refer [hours ago]]
    [clj-time.format :as tf]
    [camel-snake-kebab.core :as cskc]
@@ -56,7 +56,7 @@
        (do (error "No more retries.")
            (throw (Exception. "Error fetching scans.")))
        :else
-       (do (error "Couldn't fetch page. Retrying.")
+       (do (warn "Couldn't fetch page. Retrying.")
            (mt/in
             timeout
             #(get-page-retry! token url (dec num-retries) timeout)))))))
