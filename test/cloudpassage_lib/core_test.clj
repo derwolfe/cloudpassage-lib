@@ -4,7 +4,6 @@
             [manifold.time :as mt]
             [clj-time.core :as ct]
             [cheshire.core :as json]
-            [clojure.string :as str]
             [cloudpassage-lib.core :as core]))
 
 (deftest get-auth-token!-tests
@@ -43,7 +42,7 @@
   (testing "it actually formats dates"
     (let [a-date (ct/date-time 1986 10 14 4 3 27 456)
           formatted (core/->cp-date a-date)]
-      (is (= formatted "1986-10-14T04:03:27Z")))))
+      (is (= "1986-10-14T04:03:27Z" formatted)))))
 
 (deftest get-single-events-page!-tests
   (testing "returns ::fetch-error on exception"

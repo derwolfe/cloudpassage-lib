@@ -4,14 +4,13 @@
    [cloudpassage-lib.core :as cpc :refer [cp-date-formatter]]
    [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
    [clj-time.format :as tf]
-   [clj-time.core :as t :refer [millis hours ago within?]]
+   [clj-time.core :as t :refer [hours ago within?]]
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is are]]
    [manifold.deferred :as md]
    [manifold.stream :as ms]
    [manifold.time :as mt]
-   [cemerick.url :as u]
-   [taoensso.timbre :as timbre :refer [info spy]]))
+   [cemerick.url :as u]))
 
 (deftest scans-url-tests
   (are [opts expected] (= expected (#'scans/scans-url opts))
@@ -40,9 +39,7 @@
 (deftest get-page-retry!-tests
   (testing "Throws an exception after three retries"
     (let [fake-get (fn [token uri]
-                     (let [d (md/deferred)]
-                       (md/success! d :cloudpassage-lib.core/fetch-error)
-                       d))]
+                     (md/success-deferred :cloudpassage-lib.core/fetch-error))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [c (mt/mock-clock 0)
               timeout 3000
@@ -61,9 +58,7 @@
   (testing "Doesn't retry on good response"
     (let [scan {:scan-id 1 :module "fim"}
           fake-get (fn [token uri]
-                     (let [d (md/deferred)]
-                       (md/success! d scan)
-                       d))]
+                     (md/success-deferred scan))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [log (use-atom-log-appender!)
               ;; Returns instantly since no retries are necessary
@@ -114,8 +109,8 @@
 
    The only valid credentials are the account:secret pair 'lvh:hunter2'."
   [client-id client-secret url]
-  (is (= client-id "lvh"))
-  (is (= client-secret "hunter2"))
+  (is (= "lvh" client-id))
+  (is (= "hunter2" client-secret))
   (let [parsed-url (u/url url)
         query (:query parsed-url)
         page-num (-> query
@@ -168,8 +163,8 @@
 
 (defn ^:private parse-fake-request
   [client-id client-secret url]
-  (is (= client-id "lvh"))
-  (is (= client-secret "hunter2"))
+  (is (= "lvh" client-id))
+  (is (= "hunter2" client-secret))
   (let [parsed-url (u/url url)
         path (:path parsed-url)
         query (:query parsed-url)

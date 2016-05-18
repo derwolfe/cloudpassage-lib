@@ -3,20 +3,15 @@
   (:require
    [cemerick.url :as u]
    [clojure.string :as str]
-   [manifold.stream :as ms]
    [aleph.http :as http]
    [manifold.deferred :as md]
    [manifold.stream :as ms]
    [manifold.time :as mt]
    [environ.core :refer [env]]
-   [cloudpassage-lib.core :as cpc]
    [taoensso.timbre :as timbre :refer [warn error info]]
-   [clj-time.core :as t :refer [hours ago]]
-   [clj-time.format :as tf]
    [camel-snake-kebab.core :as cskc]
    [camel-snake-kebab.extras :as cske]
-   [clojure.java.io :as io]
-   [clojure.string :refer [blank?]]))
+   [cloudpassage-lib.core :as cpc]))
 
 (def ^:private base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
@@ -82,7 +77,7 @@
           (let [resource (resource-key response)
                 pagination (:pagination response)
                 next-url (:next pagination)]
-            (if (blank? next-url)
+            (if (str/blank? next-url)
               (do (info "no more urls to fetch")
                   (ms/close! urls-stream))
               (ms/put! urls-stream next-url))
