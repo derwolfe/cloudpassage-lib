@@ -12,10 +12,7 @@
 
 (deftest fetch-token!-tests
   (let [fernet-key (fernet/generate-key)
-        succeed-get-fake-token (fn [t]
-                                 (let [d (md/deferred)]
-                                   (md/success! d t)
-                                   d))]
+        succeed-get-fake-token (fn [t] (md/success-deferred t))]
     (testing "encrypts new api token with fernet"
       (let [client-id "client-id"
             token-key (str "account-" client-id)

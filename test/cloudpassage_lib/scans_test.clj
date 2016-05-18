@@ -40,9 +40,7 @@
 (deftest get-page-retry!-tests
   (testing "Throws an exception after three retries"
     (let [fake-get (fn [token uri]
-                     (let [d (md/deferred)]
-                       (md/success! d :cloudpassage-lib.core/fetch-error)
-                       d))]
+                     (md/success-deferred :cloudpassage-lib.core/fetch-error))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [c (mt/mock-clock 0)
               timeout 3000
@@ -61,9 +59,7 @@
   (testing "Doesn't retry on good response"
     (let [scan {:scan-id 1 :module "fim"}
           fake-get (fn [token uri]
-                     (let [d (md/deferred)]
-                       (md/success! d scan)
-                       d))]
+                     (md/success-deferred scan))]
       (with-redefs [cpc/get-single-events-page! fake-get]
         (let [log (use-atom-log-appender!)
               ;; Returns instantly since no retries are necessary
