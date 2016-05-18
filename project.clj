@@ -19,6 +19,7 @@
                  [com.cemerick/url "0.1.1"]]
   :plugins [[lein-auto "0.1.2"]
             [lein-cljfmt "0.3.0"]
+            [jonase/eastwood "0.2.3"]
             [lein-pprint "1.1.1"]
             [lein-environ "1.0.2"]
             [lein-cloverage "1.0.7-SNAPSHOT"]]

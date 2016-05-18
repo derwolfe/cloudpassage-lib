@@ -109,8 +109,8 @@
 
    The only valid credentials are the account:secret pair 'lvh:hunter2'."
   [client-id client-secret url]
-  (is (= client-id "lvh"))
-  (is (= client-secret "hunter2"))
+  (is (= "lvh" client-id))
+  (is (= "hunter2" client-secret))
   (let [parsed-url (u/url url)
         query (:query parsed-url)
         page-num (-> query
@@ -163,8 +163,8 @@
 
 (defn ^:private parse-fake-request
   [client-id client-secret url]
-  (is (= client-id "lvh"))
-  (is (= client-secret "hunter2"))
+  (is (= "lvh" client-id))
+  (is (= "hunter2" client-secret))
   (let [parsed-url (u/url url)
         path (:path parsed-url)
         query (:query parsed-url)
