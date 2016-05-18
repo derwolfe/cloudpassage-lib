@@ -1,7 +1,5 @@
 (ns cloudpassage-lib.redis-test
   (:require [clojure.test :refer :all]
-            [clj-time.core :as ct]
-            [clj-time.coerce :as c]
             [taoensso.carmine :as car]
             [fernet.core :as fernet]
             [cloudpassage-lib.core :as core]

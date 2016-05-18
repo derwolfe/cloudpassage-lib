@@ -4,7 +4,6 @@
             [manifold.time :as mt]
             [clj-time.core :as ct]
             [cheshire.core :as json]
-            [clojure.string :as str]
             [cloudpassage-lib.core :as core]))
 
 (deftest get-auth-token!-tests

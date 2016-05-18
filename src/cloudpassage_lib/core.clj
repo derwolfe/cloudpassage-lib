@@ -4,7 +4,6 @@
    [aleph.http :as http]
    [environ.core :refer [env]]
    [manifold.deferred :as md]
-   [manifold.time :as mt]
    [byte-streams :as bs]
    [taoensso.carmine :as car :refer (wcar)]
    [taoensso.timbre :as timbre :refer [info warn]]

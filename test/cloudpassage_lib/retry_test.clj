@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [manifold.deferred :as md]
             [manifold.time :as mt]
-            [clojure.math.numeric-tower :as math]
             [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
             [cloudpassage-lib.retry :as retry]))
 

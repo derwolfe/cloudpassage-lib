@@ -4,14 +4,13 @@
    [cloudpassage-lib.core :as cpc :refer [cp-date-formatter]]
    [cloudpassage-lib.test-utils :refer [use-atom-log-appender!]]
    [clj-time.format :as tf]
-   [clj-time.core :as t :refer [millis hours ago within?]]
+   [clj-time.core :as t :refer [hours ago within?]]
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is are]]
    [manifold.deferred :as md]
    [manifold.stream :as ms]
    [manifold.time :as mt]
-   [cemerick.url :as u]
-   [taoensso.timbre :as timbre :refer [info spy]]))
+   [cemerick.url :as u]))
 
 (deftest scans-url-tests
   (are [opts expected] (= expected (#'scans/scans-url opts))
