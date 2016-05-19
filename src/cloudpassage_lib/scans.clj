@@ -49,12 +49,22 @@
           (cpc/get-single-events-page! token url)
           (fn [response]
             (if (cpc/page-response-ok? response) response
-              (do (warn "Couldn't fetch page.")
-                  (throw (Exception. "Error fetching scans."))))))]
+                (do (warn "Couldn't fetch page.")
+                    (throw (Exception. "No more retries."))))))]
     (retry/retry-exp-backoff
      get-events-page-or-throw
      timeout
      num-tries)))
+
+(defn ^:private handle-stream-exception
+  [deferred output-stream input-stream]
+  (md/catch deferred
+            Exception
+    (fn [exc]
+      (ms/put! output-stream ::fetch-error)
+      (error "Failed to complete stream processing:" exc)
+      (ms/close! input-stream)
+      (ms/close! output-stream))))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
@@ -73,17 +83,18 @@
     (ms/connect-via
      urls-stream
      (fn [url]
-       (md/chain
-        (get-page! client-id client-secret url)
-        (fn [response]
-          (let [resource (resource-key response)
-                pagination (:pagination response)
-                next-url (:next pagination)]
-            (if (str/blank? next-url)
-              (do (info "no more urls to fetch")
-                  (ms/close! urls-stream))
-              (ms/put! urls-stream next-url))
-            (ms/put-all! resources-stream resource)))))
+       (-> (get-page! client-id client-secret url)
+           (md/chain
+            (fn [response]
+              (let [resource (resource-key response)
+                    pagination (:pagination response)
+                    next-url (:next pagination)]
+                (if (str/blank? next-url)
+                  (do (info "no more urls to fetch")
+                      (ms/close! urls-stream))
+                  (ms/put! urls-stream next-url))
+                (ms/put-all! resources-stream resource))))
+           (handle-stream-exception resources-stream urls-stream)))
      resources-stream)
     resources-stream))
 
@@ -130,20 +141,26 @@
     (ms/connect-via
      servers-stream
      (fn [{:keys [id]}]
-       (md/chain
-        (scan-server! id module)
-        (fn [response]
-          (ms/put! server-details-stream response))))
+       (-> (scan-server! id module)
+           (md/chain
+            (fn [response]
+              (ms/put! server-details-stream response)))
+           (handle-stream-exception server-details-stream servers-stream)))
      server-details-stream)
     server-details-stream))
 
 (defn ^:private report-for-module!
   "Get recent report data for a certain client, and filter based on module."
   [client-id client-secret module-name]
-  (->> (list-servers! client-id client-secret)
-       (scan-each-server! client-id client-secret module-name)
-       (ms/map #(cske/transform-keys cskc/->kebab-case-keyword %))
-       ms/stream->seq))
+  (let [report
+        (->> (list-servers! client-id client-secret)
+             (scan-each-server! client-id client-secret module-name)
+             (ms/map #(cske/transform-keys cskc/->kebab-case-keyword %))
+             ms/stream->seq)]
+    (if (some #(= % ::fetch-error) report)
+      (do (error "Report failed to generate; aborting.")
+          (throw (Exception. "Report failed to generate")))
+      report)))
 
 (defn fim-report!
   "Get the current (recent) FIM report for a particular client."

@@ -44,20 +44,28 @@
         (let [c (mt/mock-clock 0)
               timeout 2
               num-retries 3
-              total-time 30  ;; a_n := timeout^n, \sum{n=1}^(num-tries) a_n
+              total-time 14  ;; 2 + 4 + 8
               log (use-atom-log-appender!)]
           (mt/with-clock c
             (let [response (#'scans/get-page-retry! '_ '_ num-retries timeout)]
               (mt/advance c (* 1000 total-time))  ;; mt/clock needs millis
               (is (thrown-with-msg?
                    Exception
-                   #"Error fetching scans\."
+                   #"No more retries\."
                    @response))))
           (is (= (inc num-retries) (count @log)))
-          (is (str/includes? (first @log) "Couldn't fetch page."))))
+          (doseq [logline @log]
+            (is (str/includes? logline "Couldn't fetch page.")))))
       (testing "Exception thrown in report isn't handled by manifold"
         (with-redefs [cpc/fetch-token! (constantly "yay")]
-          (is (thrown-with-msg? Exception "msg" (scans/fim-report! '_ '_)))))))
+          (let [log (use-atom-log-appender!)]
+                (is (thrown-with-msg?
+                     Exception
+                     #"Report failed to generate"
+                     (vec (scans/fim-report! '_ '_)))) ;; make lazyseq eval
+                (is (str/includes?
+                     (last @log)
+                     "Report failed to generate; aborting.")))))))
   (testing "Doesn't retry on good response"
     (let [scan {:scan-id 1 :module "fim"}
           fake-get (fn [token uri]
