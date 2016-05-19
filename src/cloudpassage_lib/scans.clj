@@ -11,7 +11,8 @@
    [taoensso.timbre :as timbre :refer [warn error info]]
    [camel-snake-kebab.core :as cskc]
    [camel-snake-kebab.extras :as cske]
-   [cloudpassage-lib.core :as cpc]))
+   [cloudpassage-lib.core :as cpc]
+   [cloudpassage-lib.retry :as retry]))
 
 (def ^:private base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
@@ -42,25 +43,26 @@
 (defn ^:private get-page-retry!
   "Gets a page, and handles retries on error."
   [token url num-retries timeout]
-  (md/chain
-   (cpc/get-single-events-page! token url)
-   (fn [response]
-     (cond
-       (cpc/page-response-ok? response) response
-       (zero? num-retries)
-       (do (error "No more retries.")
-           (throw (Exception. "Error fetching scans.")))
-       :else
-       (do (warn "Couldn't fetch page. Retrying.")
-           (mt/in
-            timeout
-            #(get-page-retry! token url (dec num-retries) timeout)))))))
+  (let [num-tries (inc num-retries)
+        get-events-page-or-throw
+        #(md/chain
+          (cpc/get-single-events-page! token url)
+          (fn [response]
+            (if (cpc/page-response-ok? response) response
+              (do (warn "Couldn't fetch page.")
+                  (throw (Exception. "Error fetching scans."))))))]
+    (retry/retry-exp-backoff
+     get-events-page-or-throw
+     timeout
+     num-tries)))
 
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
   [client-id client-secret url]
-  (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))]
-    (get-page-retry! token url 3 3000)))
+  (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))
+        num-retries 3
+        timeout 2]  ;; timeout in seconds
+    (get-page-retry! token url num-retries timeout)))
 
 (defn ^:private stream-paginated-resources!
   "Returns a stream of resources coming from a paginated list."
