@@ -37,10 +37,10 @@
          (#'scans/scan-server-url "server-id" "svm"))))
 
 (deftest get-page-retry!-tests
-  (testing "Throws an exception after three retries"
-    (let [fake-get (fn [token uri]
-                     (md/success-deferred :cloudpassage-lib.core/fetch-error))]
-      (with-redefs [cpc/get-single-events-page! fake-get]
+  (let [fake-get (fn [token uri]
+                   (md/success-deferred :cloudpassage-lib.core/fetch-error))]
+    (with-redefs [cpc/get-single-events-page! fake-get]
+      (testing "Throws an exception after three retries"
         (let [c (mt/mock-clock 0)
               timeout 3000
               num-retries 3
@@ -54,7 +54,10 @@
                    @response))))
           (is (= (inc num-retries) (count @log)))
           (is (str/includes? (first @log) "Couldn't fetch page. Retrying."))
-          (is (str/includes? (last @log) "No more retries."))))))
+          (is (str/includes? (last @log) "No more retries."))))
+      (testing "Exception thrown in report isn't handled by manifold"
+        (with-redefs [cpc/fetch-token! (constantly "yay")]
+          (is (thrown-with-msg? Exception "msg" (scans/fim-report! '_ '_)))))))
   (testing "Doesn't retry on good response"
     (let [scan {:scan-id 1 :module "fim"}
           fake-get (fn [token uri]
