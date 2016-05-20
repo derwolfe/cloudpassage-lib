@@ -1,3 +1,9 @@
+# 0.2.5
+
+- Switch scans retry logic to exponential backoff, fix exception throwing on
+  report error (#61)
+- Use the new fernet library capabilities, removing our custom module (#60)
+
 # 0.2.4
 
 - Improve log level granularity (#56)
