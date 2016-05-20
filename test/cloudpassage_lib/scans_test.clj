@@ -62,7 +62,7 @@
             (is (thrown-with-msg?
                  Exception
                  #"Report failed to generate"
-                 (vec (scans/fim-report! '_ '_)))) ;; make lazyseq eval
+                 (dorun (vec (scans/fim-report! '_ '_))))) ;; make lazyseq eval
             (is (str/includes?
                  (last @log)
                  "Report failed to generate; aborting.")))))))
