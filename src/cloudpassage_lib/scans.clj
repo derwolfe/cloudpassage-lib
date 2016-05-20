@@ -48,9 +48,10 @@
         #(md/chain
           (cpc/get-single-events-page! token url)
           (fn [response]
-            (if (cpc/page-response-ok? response) response
-                (do (warn "Couldn't fetch page.")
-                    (throw (Exception. "No more retries."))))))]
+            (if (cpc/page-response-ok? response)
+              response
+              (do (warn "Couldn't fetch page.")
+                  (throw (Exception. "No more retries."))))))]
     (retry/retry-exp-backoff
      get-events-page-or-throw
      timeout

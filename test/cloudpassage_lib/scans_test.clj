@@ -59,13 +59,13 @@
       (testing "Exception thrown in report isn't handled by manifold"
         (with-redefs [cpc/fetch-token! (constantly "yay")]
           (let [log (use-atom-log-appender!)]
-                (is (thrown-with-msg?
-                     Exception
-                     #"Report failed to generate"
-                     (vec (scans/fim-report! '_ '_)))) ;; make lazyseq eval
-                (is (str/includes?
-                     (last @log)
-                     "Report failed to generate; aborting.")))))))
+            (is (thrown-with-msg?
+                 Exception
+                 #"Report failed to generate"
+                 (vec (scans/fim-report! '_ '_)))) ;; make lazyseq eval
+            (is (str/includes?
+                 (last @log)
+                 "Report failed to generate; aborting.")))))))
   (testing "Doesn't retry on good response"
     (let [scan {:scan-id 1 :module "fim"}
           fake-get (fn [token uri]
