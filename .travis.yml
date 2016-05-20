@@ -6,10 +6,10 @@ cache:
   - "$HOME/.lein"
   - "$HOME/.m2"
 services:
-  - redis-server
+- redis-server
 env:
   global:
-    - REDIS_URL="redis://localhost:6379" REDIS_TIMEOUT="4000"
+  - REDIS_URL="redis://localhost:6379" REDIS_TIMEOUT="4000"
 script:
 - lein cljfmt check
 - lein eastwood
@@ -20,4 +20,4 @@ after_success:
 notifications:
   email: false
   slack:
-    secure: tsgD6DpIWz1fyUy2BtwSS9fDtn5CHCTQ8hckXnILe/Pgx0Y2sk9cLlJhDMObnTK8wL9NEOvx1MpJw9vK//FmG8JriwdOjl1jjj644U488jKsCF3rnAWvxKA5i7cCGPob2di8u/zvUYwctGIQSeyAb68V8geNO9/UA9Wpb1wRGJJMLMbn6MmUmHuhkV+9VizMJ/x3aTyAMxbCfkAxE68fQjLcqAfPr7Jp55s3vosLqnsAfBPN1hNHKXeIDhRNnHfzJN+0ZJb7dUQL3GqOARG5vrWH3xtgn285of+rZtJvz3s6Apu93SXK2vfdRpOZ/GN8B0DGUaK5SKA1EUHVUbZpGDeCj1LFpGiTH7+BD7O47/ANhwjyVWI9f8zqElDzUlh4RMeJu7vhmp7e+YfmQx8arulapFGpoiclQ888G4E9pib8METUfDLWOeyRKQzGHH2ZksrPY+IEPLhzq6rMAAEtn38v68jZIKjbOy0QMx61W8WB4PI9Lc2PFPfzpu1W+tMTeyAUJnKNTZ1ay75vDmJ2osBx38/VDchs2et0qkiN/yyQ6GYPOFlmd9GfZjN94abRw7R7jQZ3pskoOufj/GZtClFv2bHbfK8Cuzg4a5V0ZxueELZiXNFAZntgDuUo9vTfRbcfVRxnZr4NwfYpkD8aa+prt+TM1wgd3nFmtMtYh6o=
+    secure: hhmqY9BrfJnzG381gQURd7NdyVWIi8CWYo8z7jeUPSWcAAGkC9vbgqss7Ziz9QB0zeVTua0tYnj/mmf/ndbzhNJ0NOIizArX1OVgJ1US7IpedeO7WogAIV//UfxGfmlfr2wrYQCy+039V1CkrVE5VXVkdEQEVHGfCRqCUrjoDlgTtUuDb2nJineN5raEOE/6y8x5Z//3OEcARnqFFw2MnO0HwGy7PmB3xB4r7DSUEDDx34kUA8FrnQG8h7zWwjCxF8ca9uQSiwPKfBFbMgyIdkVy5XYqy/NZknh62G0sgBoIVh0+KdCeps6NXjZczrScJSW/00vO5DpYstPPLIZDE8KZbH3Q9P+t69BTiQ2BD/tLxx57dum7eHA9UuOaw2X1vHmvP9Cs4O8FyYxWCoC5lBfxC9I8A32JoV4i+KKljCXmeqNVpaqjVBjlz6IeYBADqMvmXrb0HcWlIbEvEwNDD7CvV/dbtdlu2YyQLI1epNRVmdeiirZWhKREWmAmM6Ge+k/m95z6jx9usjVY0jnE+ZJQjwFvG5REErTlR9PVWawlUcTp+ai7sSON7qkGwHw1MgqYh8el+gNBVjo/ReDieKWD45mk8sNBnR6uMyZoa9EXZZyFkaOy+HvEuNDYR8vWK5gEMrIVJf3+ulqSeQTJZ6JxHaIAPYBMvaQx1mv+TvY=
