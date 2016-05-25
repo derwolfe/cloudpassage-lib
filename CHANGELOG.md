@@ -1,3 +1,8 @@
+# 0.2.6
+
+- Change warn statement to remove the word "error", which was setting off
+  alerts (#66)
+
 # 0.2.5
 
 - Switch scans retry logic to exponential backoff, fix exception throwing on
