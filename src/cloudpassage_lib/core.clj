@@ -82,7 +82,7 @@
      (md/catch
       Exception
       (fn [exc]
-        (warn "error fetching events page:" (.getMessage exc))
+        (warn "problem fetching events page:" (.getMessage exc))
         ::fetch-error)))))
 
 (defn page-response-ok?
