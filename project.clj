@@ -12,6 +12,7 @@
                  [base64-clj "0.1.1"]
                  [com.taoensso/carmine "2.12.1"]
                  [fernet "0.3.0" :exclusions [io.netty/netty-buffer]]
+                 [banach "0.1.0"]
                  [environ "1.0.1"]
                  [cheshire "5.5.0"]
                  [camel-snake-kebab "0.3.2"]

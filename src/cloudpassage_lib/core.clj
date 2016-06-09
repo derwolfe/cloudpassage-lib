@@ -11,7 +11,7 @@
    [clj-time.core :as time]
    [clj-time.format :as f]
    [fernet.core :as fernet]
-   [cloudpassage-lib.retry :as retry]
+   [banach.retry :as retry]
    [cheshire.core :as json]))
 
 ;; the url from which new auth-tokens can be obtained.
