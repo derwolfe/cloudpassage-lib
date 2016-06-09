@@ -12,7 +12,7 @@
    [camel-snake-kebab.core :as cskc]
    [camel-snake-kebab.extras :as cske]
    [cloudpassage-lib.core :as cpc]
-   [cloudpassage-lib.retry :as retry]))
+   [banach.retry :as retry]))
 
 (def ^:private base-scans-url
   "https://api.cloudpassage.com/v1/scans/")
