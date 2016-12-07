@@ -1,3 +1,9 @@
+# 0.2.7
+
+- Update dependencies
+- Hopefully the new `aleph` will address some of the intermittent livelocking
+  we've seen in production
+
 # 0.2.6
 
 - Change warn statement to remove the word "error", which was setting off
