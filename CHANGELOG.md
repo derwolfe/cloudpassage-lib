@@ -1,3 +1,15 @@
+# 1.0.0
+
+## Breaking changes
+
+- Removed public `cloudpassage-lib.core/wcar` macro that was used to speak with
+  redis.
+- Signature for `cloudpassage-lib.core/fetch-token!` no longer requires a fernet
+  key.
+- Updated documentation to reflect dependency changes.
+- redis and fernet are no longer required. This due to the api changes made in
+  PR #73 (https://github.com/RackSec/cloudpassage-lib/pull/73).
+
 # 0.2.7
 
 - Update dependencies
