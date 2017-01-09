@@ -1,4 +1,4 @@
-(defproject cloudpassage-lib "0.2.8-SNAPSHOT"
+(defproject cloudpassage-lib "1.0.0-SNAPSHOT"
   :description "A library for interacting with cloudpassage apis."
   :lein-release {:deploy-via :clojars}
   :url "http://github.com/RackSec/cloudpassage-lib"
