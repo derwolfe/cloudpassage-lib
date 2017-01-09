@@ -31,22 +31,28 @@ We release this software on
    release.
 
    You should consider whether the release is a *patch, *minor*, or *major*
-   release. Patches are just small changes that no consumer should care about.
-   Minor releases contain improvements or new API calls, and do not break or
-   change existing functionality. Major releases make "breaking" changes such
+   release. Patches are small internal changes that no consumer should care
+   about. Minor releases contain improvements or new API calls, and do not break
+   or change existing functionality. Major releases make "breaking" changes such
    that consumers of the library would have to make changes their code to
    upgrade to the new version. A minor release increments the version number by
-   0.0.1; a major release increments the version number by 0.1.0.
+   0.0.1; a major release increments the version number by 0.1.0; finally, a patch
+   release increments the version number by 0.0.1.
 
-2. Remove the word "SNAPSHOT" from the the version number in `project.clj`. And
+2. Remove the word "SNAPSHOT" from the version number in `project.clj`. And
    bump the version identifier appropriately (e.g. if this is a major release,
-   bump 1.x.x to 2.0.0). Commit the change and create a new tag for the version
+   bump 1.x.y to 2.0.0). Commit the change and create a new tag for the version
    number.
 
 3. run `lein deploy clojars`. You will be asked for a gpg password, your clojars username, and password.
 
 4. Bump current version numbers by a patch (x.y.z => x.y.z + 1) and add the suffix `-SNAPSHOT`.
 
-5. Push the new tag and commits to master.
+5. Push the new tag and commits to master. E.g.,
+
+```shell
+$ git push origin 1.0.0  // push the tag for the current release
+$ git push origin master // push the release commits
+```
 
 Congratulations! You've completed a release.
