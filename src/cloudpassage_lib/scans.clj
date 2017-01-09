@@ -7,7 +7,6 @@
    [manifold.deferred :as md]
    [manifold.stream :as ms]
    [manifold.time :as mt]
-   [environ.core :refer [env]]
    [taoensso.timbre :as timbre :refer [warn error info]]
    [camel-snake-kebab.core :as cskc]
    [camel-snake-kebab.extras :as cske]
@@ -70,7 +69,7 @@
 (defn ^:private get-page!
   "Gets a page, and handles auth for you."
   [client-id client-secret url]
-  (let [token (cpc/fetch-token! client-id client-secret (:fernet-key env))
+  (let [token (cpc/fetch-token! client-id client-secret)
         num-retries 3
         timeout 2]  ;; timeout in seconds
     (get-page-retry! token url num-retries timeout)))

@@ -5,13 +5,13 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/core.cache "0.6.5"]
                  [com.taoensso/timbre "4.7.4"]
                  [manifold "0.1.5"]
                  [aleph "0.4.1"]
                  [clj-time "0.12.2"]
                  [base64-clj "0.1.1"]
-                 [com.taoensso/carmine "2.15.0"]
-                 [fernet "0.3.0" :exclusions [io.netty/netty-buffer]]
+                 [com.taoensso/timbre "4.2.0"]
                  [banach "0.2.0"]
                  [environ "1.1.0"]
                  [cheshire "5.6.3"]
@@ -19,14 +19,13 @@
                  [org.clojure/math.numeric-tower "0.0.4"]
                  [com.cemerick/url "0.1.1"]]
   :plugins [[lein-auto "0.1.2"]
+            [lein-ancient "0.6.10"]
             [lein-cljfmt "0.3.0"]
             [jonase/eastwood "0.2.3"]
             [lein-pprint "1.1.1"]
             [lein-environ "1.0.2"]
-            [lein-cloverage "1.0.7-SNAPSHOT"]]
+            [lein-cloverage "1.0.9"]]
   :min-lein-version "2.0.0"
-  :profiles {:test {:env {:redis-url "redis://localhost:6379"
-                          :redis-timeout "4000"}}
-             :dependencies [[pjstadig/humane-test-output "0.7.1"]]
+  :profiles {:dependencies [[pjstadig/humane-test-output "0.7.1"]]
              :injections [(require 'pjstadig.humane-test-output)
                           (pjstadig.humane-test-output/activate!)]})

@@ -1,10 +1,12 @@
 (ns cloudpassage-lib.core-test
-  (:require [clojure.test :refer :all]
-            [manifold.deferred :as md]
-            [manifold.time :as mt]
-            [clj-time.core :as ct]
-            [cheshire.core :as json]
-            [cloudpassage-lib.core :as core]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.core.cache :as cache]
+   [manifold.deferred :as md]
+   [manifold.time :as mt]
+   [clj-time.core :as ct]
+   [cheshire.core :as json]
+   [cloudpassage-lib.core :as core]))
 
 (deftest get-auth-token!-tests
   (testing "returns an authentication token"
@@ -57,3 +59,41 @@
       (with-redefs [aleph.http/get fake-get]
         (is (= {:events []}
                @(core/get-single-events-page! "" "")))))))
+
+(deftest fetch-token!-tests
+  (testing "when cached, a token is returned"
+    (let [client-id 123456
+          as-key (str client-id)
+          client-secret "unused"
+          expected "a-token"
+          c (#'cloudpassage-lib.core/build-cache)]
+          ;; update the cache atom to include the values we need
+      (with-redefs [cloudpassage-lib.core/cache-state c]
+        (swap! c cache/miss as-key expected)
+        (is (cache/has? @c as-key)
+            "the cache has an account for the cid")
+        (is (= expected (core/fetch-token! client-id client-secret))))))
+  (testing "the cache evicts tokens after a specific cache-ttl-milliseconds"
+    (with-redefs [cloudpassage-lib.core/cache-ttl-milliseconds 100]
+      (let [c (#'cloudpassage-lib.core/build-cache)]
+        ;; sadly, the TTLCache doesn't expose any sort of fake clock like manifold
+        (swap! c cache/miss ::bose "speaker")
+        (is (cache/has? @c ::bose))
+        (Thread/sleep 200) ;; wait extra long
+        (is (not (cache/has? @c ::bose))))))
+  (testing "returns the newly fetched token and caches it"
+    (let [client-id 123456
+          as-key (str client-id)
+          client-secret "unused"
+          expected "a-token"
+          c (#'cloudpassage-lib.core/build-cache)
+          the-token "my voice is my password, verify me"
+          fake-get-auth-token (fn [client-id client-secret]
+                                (md/success-deferred {:access_token the-token}))]
+      (with-redefs [cloudpassage-lib.core/cache-state c
+                    cloudpassage-lib.core/get-auth-token! fake-get-auth-token]
+        (is (empty? @c) "nothing is in the cache")
+        (is (= the-token (core/fetch-token! client-id client-secret))
+            "the token is returned")
+        (is (= the-token (cache/lookup @c as-key))
+            "the new token has been cached")))))
