@@ -10,7 +10,6 @@
    [base64-clj.core :as base64]
    [clj-time.core :as time]
    [clj-time.format :as f]
-   [fernet.core :as fernet]
    [banach.retry :as retry]
    [cheshire.core :as json]))
 
