@@ -30,7 +30,7 @@ We release this software on
    By convention, the person who reviews and merges this PR will create the new
    release.
 
-   You should consider whether the release is a *patch, *minor*, or *major*
+   You should consider whether the release is a *patch*, *minor*, or *major*
    release. Patches are small internal changes that no consumer should care
    about. Minor releases contain improvements or new API calls, and do not break
    or change existing functionality. Major releases make "breaking" changes such
